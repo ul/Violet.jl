@@ -40,7 +40,7 @@ function run(engine::Engine)
       wait(timer)
       serialize(engine.stream, buffer)
       flush(engine.stream)
-      engine.frame += engine.buffer_size
+      engine.frame += engine.config.buffer_size
     else
       println("stopping...")
       close(engine.stream)

@@ -1,4 +1,4 @@
-export Sample, Time, AudioChannel
+export Sample, Time, AudioChannel, addaudio, rmaudio
 
 typealias Sample Nullable{Float64}
 typealias Time Float64
@@ -26,4 +26,19 @@ function Base.(:*)(a::Float64, f::Function)
     isnull(x) && return Sample()
     Sample(a*get(x))
   end
+end
+
+function addaudio(port=31337, config=CONFIG)
+  cmd = `julia
+   $(Pkg.dir("Violet", "src", "audio.jl"))
+   $port
+   $(config.input_channels)
+   $(config.output_channels)
+   $(config.sample_rate)
+   $(config.hardware_buffer_size)`
+  spawn(cmd)
+end
+
+function rmaudio(p)
+  kill(p)
 end

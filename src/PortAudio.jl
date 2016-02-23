@@ -1,8 +1,7 @@
 module PortAudio
 
 export PaStream, PaBuffer, PaSample, PaDeviceIndex
-export open, close, start, stop
-export write
+export start_stream, stop_stream
 
 include(Pkg.dir("Violet", "deps", "deps.jl"))
 include("circularbuffer.jl")
@@ -126,7 +125,7 @@ function Base.open(ID::PaDeviceIndex,
   else
     stream = Pa_OpenDefaultStream(num_IO[1], num_IO[2], sample_format, sample_rate, buf_size)
   end
-  play_buffer = CircularBuffer(sample_type, 1000sample_rate)
+  play_buffer = CircularBuffer(sample_type, 10sample_rate)
   tmp_buffer = zeros(sample_type, sample_rate)
   stream_wrapper = PaStreamWrapper(stream, ID, sample_rate, sample_format,
                                    sample_type, buf_size, num_IO[1], num_IO[2],
@@ -136,9 +135,9 @@ end
 "Close a PortAudio stream"
 Base.close(stream_wrapper::PaStreamWrapper) = Pa_CloseStream(stream_wrapper.stream)
 
-start(stream_wrapper::PaStreamWrapper) = Pa_StartStream(stream_wrapper.stream)
+start_stream(stream_wrapper::PaStreamWrapper) = Pa_StartStream(stream_wrapper.stream)
 
-stop(stream_wrapper::PaStreamWrapper) = Pa_StopStream(stream_wrapper.stream)
+stop_stream(stream_wrapper::PaStreamWrapper) = Pa_StopStream(stream_wrapper.stream)
 
 "Find a PortAudio device by its device name and host API name"
 function find_device(device_name::AbstractString, device_api::AbstractString="")
@@ -213,7 +212,7 @@ function Base.flush(stream_wrapper::PaStreamWrapper)
     unsafe_copy!(stream_wrapper.tmp_buffer, stream_wrapper.play_buffer, n)
     Pa_WriteStream(stream_wrapper.stream, stream_wrapper.tmp_buffer, towrite)
   else
-    Libc.sleep(max(0.0001, 0.1*(MIN_FLUSH_FRAMES-towrite)/stream_wrapper.sample_rate))
+    sleep(max(0, (MIN_FLUSH_FRAMES-towrite)/stream_wrapper.sample_rate))
   end
   nothing
 end

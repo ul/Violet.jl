@@ -6,31 +6,37 @@ type Engine
   empty::Bool
   root::Node
   eventlist::EventList
-  stream::IO
+  #stream::IO
+  port::Int
   frame::Int
 end
 
-function Engine(address=31337, config=CONFIG)
+function Engine(port=31337, config=CONFIG)
   Engine(
     config,
     :stopped,
     false,
     Node(config),
     EventList(config),
-    convert(IO, connect(address)),
+    #convert(IO, connect(port)),
+    port,
     0)
 end
 
 "Main realtime engine running function. Called within a thread from engine-start."
-function run(engine::Engine)
+function Base.run(engine::Engine)
+  if engine.status == :running
+    return
+  end
+  engine.status = :running
+  stream = convert(IO, connect(engine.port))
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
   Δτ = engine.config.buffer_size/engine.config.sample_rate
   timer = Timer(0, Δτ)
-  tic()
-  while true
+  @async while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
-      run(engine.root, engine.frame)
+      engine.root(engine.frame)
       @inbounds copy!(buffer, engine.root.buffer)
       if engine.empty
         empty!(engine.root)
@@ -38,31 +44,18 @@ function run(engine::Engine)
         engine.empty = false
       end
       wait(timer)
-      serialize(engine.stream, buffer)
-      flush(engine.stream)
+      serialize(stream, buffer)
+      flush(stream)
       engine.frame += engine.config.buffer_size
     else
-      println("stopping...")
-      close(engine.stream)
-      dt = toq()
-      sr = engine.frame/dt
-      println("time: $dt, sr: $sr")
+      close(stream)
       break
     end
   end
 end
 
-function Base.open(engine::Engine)
-  if engine.status == :stopped
-    engine.status = :running
-    @async run(engine)
-  end
-end
-
-function Base.close(engine::Engine)
-  if engine.status == :running
-    engine.status = :stopped
-  end
+function Base.kill(engine::Engine)
+  engine.status = :stopped
 end
 
 function empty!(engine::Engine)

@@ -3,16 +3,31 @@ include("config.jl")
 
 using PortAudio
 
-function run(address=31337)
+function init(port=31337,
+              input_channels=CONFIG.input_channels,
+              output_channels=CONFIG.output_channels,
+              sample_rate=CONFIG.sample_rate,
+              buffer_size=CONFIG.hardware_buffer_size)
   PortAudio.initialize()
 
   devID = convert(PaDeviceIndex, -1)
-  audiostream = PortAudio.open(devID, (0, CONFIG.output_channels), CONFIG.sample_rate, CONFIG.hardware_buffer_size)
+  global audiostream = open(devID,
+                            (input_channels, output_channels),
+                            sample_rate, buffer_size)
+  global server = listen(port)
+  start_stream(audiostream)
+end
 
-  PortAudio.start(audiostream)
+function clean()
+  close(server)
+  stop_stream(audiostream)
+  close(audiostream)
+  PortAudio.terminate()
+end
 
-  server = listen(address)
+atexit(clean)
 
+function run()
   @async while true
     flush(audiostream)
   end
@@ -20,11 +35,10 @@ function run(address=31337)
   while true
     stream = convert(IO, accept(server))
     @async while isopen(stream)
-      x = deserialize(stream)
-      write(audiostream, x)
+      write(audiostream, deserialize(stream))
     end
   end
 end
 
-# FIXME remove
+init(map((x) -> parse(Int, x), ARGS)...)
 run()

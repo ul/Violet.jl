@@ -17,7 +17,7 @@ Node(config=CONFIG) =
 # option to return nil when afs are empty, for the scenario of disk render.
 # should add a *disk-render* flag to config and a default option here
 # so that user can override behavior.
-function run(node::Node, frame₀::Int)
+function Base.call(node::Node, frame₀::Int)
   fill!(node.buffer, 0.0)
   Δτ = 1/node.config.sample_rate
 

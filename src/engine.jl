@@ -1,24 +1,20 @@
-export Engine, add_audio, rm_audio, add_pre_control, rm_pre_control, add_post_control, rm_post_control
+export Engine
 
 type Engine
   config::Config
   status::Symbol
   empty::Bool
-  precontrol::Node
-  rootaudio::Node
-  postcontrol::Node
+  root::Node
   eventlist::EventList
   stream::IO
-  step::Int
+  tick::Int
 end
 
-function Engine(address="/tmp/violet", config=CONFIG)
+function Engine(address=31337, config=CONFIG)
   Engine(
     config,
     :stopped,
     false,
-    Node(config),
-    Node(config),
     Node(config),
     EventList(config),
     convert(IO, connect(address)),
@@ -33,24 +29,21 @@ function run(engine::Engine)
   while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
-      frame = engine.step*engine.config.buffer_size
-      run_precontrol(engine.precontrol, frame)
-      @inbounds copy!(buffer, run_audio(engine.rootaudio, frame))
-      run_postcontrol(engine.postcontrol, frame)
+      frame = engine.tick*engine.config.buffer_size
+      run(engine.root, frame)
+      @inbounds copy!(buffer, engine.root.buffer)
       if engine.empty
-        empty!(engine.precontrol)
-        empty!(engine.rootaudio)
-        empty!(engine.postcontrol)
+        empty!(engine.root)
         empty!(engine.eventlist)
         engine.empty = false
       end
       serialize(engine.stream, buffer)
       flush(engine.stream)
-      engine.step += 1
+      engine.tick += 1
     else
       close(engine.stream)
       dt = toq()
-      sr = engine.step/dt
+      sr = engine.tick/dt
       println("stopping...")
       println("time: $dt, sr: $sr, rsr: $(engine.config.sample_rate/engine.config.buffer_size)")
       Profile.print()
@@ -81,7 +74,7 @@ end
 function fire_audio_event(engine::Engine, event::Event)
   afunc = fire_event(event)
   if afunc # FIXME nullable
-    push!(engine.rootaudio, afunc)
+    push!(engine.root.audio, afunc)
   end
 end
 

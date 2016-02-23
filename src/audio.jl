@@ -3,7 +3,7 @@ include("config.jl")
 
 using PortAudio
 
-function run(address="/tmp/violet")
+function run(address=31337)
   PortAudio.initialize()
 
   devID = convert(PaDeviceIndex, -1)

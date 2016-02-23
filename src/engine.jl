@@ -7,7 +7,7 @@ type Engine
   root::Node
   eventlist::EventList
   stream::IO
-  tick::Int
+  frame::Int
 end
 
 function Engine(address=31337, config=CONFIG)
@@ -24,29 +24,29 @@ end
 "Main realtime engine running function. Called within a thread from engine-start."
 function run(engine::Engine)
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
-  #timer = Timer() # FIXME
+  Δτ = engine.config.buffer_size/engine.config.sample_rate
+  timer = Timer(0, Δτ)
   tic()
   while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
-      frame = engine.tick*engine.config.buffer_size
-      run(engine.root, frame)
+      run(engine.root, engine.frame)
       @inbounds copy!(buffer, engine.root.buffer)
       if engine.empty
         empty!(engine.root)
         empty!(engine.eventlist)
         engine.empty = false
       end
+      wait(timer)
       serialize(engine.stream, buffer)
       flush(engine.stream)
-      engine.tick += 1
+      engine.frame += engine.buffer_size
     else
+      println("stopping...")
       close(engine.stream)
       dt = toq()
-      sr = engine.tick/dt
-      println("stopping...")
-      println("time: $dt, sr: $sr, rsr: $(engine.config.sample_rate/engine.config.buffer_size)")
-      Profile.print()
+      sr = engine.frame/dt
+      println("time: $dt, sr: $sr")
       break
     end
   end

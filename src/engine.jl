@@ -58,7 +58,7 @@ function Base.kill(engine::Engine)
   engine.status = :stopped
 end
 
-function empty!(engine::Engine)
+function Base.empty!(engine::Engine)
   if engine.status == :running
     engine.empty = true
   end

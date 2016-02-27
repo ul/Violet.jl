@@ -14,10 +14,15 @@ simple_synth(ν) =
 
 f = simple_synth(440)
 
-push!(engine.root.audio, f)
+#push!(engine.root.audio, f)
+
+evt = Event(() -> push!(engine.root.audio, f), 10.0, [])
+push!(engine.eventlist, evt)
+
+engine.eventlist.current_beat
 
 sleep(10)
-delete!(engine.root.audio, f)
+#delete!(engine.root.audio, f)
 kill(engine)
 sleep(2) # give time for async print to finish it's job
 rmaudio(pid)

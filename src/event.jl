@@ -1,3 +1,5 @@
+using Base.Collections
+
 export Event, EventList, eventlist_tick!
 
 immutable Event
@@ -6,8 +8,11 @@ immutable Event
   args
 end
 
+typealias EventQueue PriorityQueue{Event, Time}
+EventQueue() = PriorityQueue(Event, Time)
+
 type EventList
-  events::Collections.PriorityQueue{Event, Int}
+  events::EventQueue
   pending_events::Vector{Event}
   current_beat::Time
   config::Config
@@ -22,7 +27,7 @@ function EventList(config=CONFIG)
 end
 
 function EventList(events, config)
-  pq = Collections.PriorityQueue(Event, Int)
+  pq = EventQueue()
   for e in events
     pq[e] = e.start
   end
@@ -57,9 +62,9 @@ function merge_pending!(eventlist::EventList)
     # FIXME make atomic
     new_events = copy(eventlist.pending_events)
     empty!(eventlist.pending_events)
-    timed_events = map((e::Event) -> alter_event_time(eventlist.current_beat + event.start, event), new_events)
+    timed_events = map((e::Event) -> alter_event_time(eventlist.current_beat + e.start, e), new_events)
     for e in timed_events
-      eventlist[e] = e.start
+      eventlist.events[e] = e.start
     end
   end
 end
@@ -72,11 +77,8 @@ function eventlist_tick!(eventlist::EventList)
   Δt = seconds_to_beats(eventlist.config.buffer_size/eventlist.config.sample_rate, eventlist.config.tempo)
   end_time = eventlist.current_beat + Δt
   # REVIEW Queue, in, take!
-  for event in eventlist.events
-    # FIXME use nullable
-    if event != nothing && event.start < end_time
-      fire_event(take!(eventlist.events))
-    end
+  while peek(eventlist.events)[2] < end_time
+    fire_event(dequeue!(eventlist.events))
   end
   eventlist.current_beat = end_time
   !isempty(eventlist)

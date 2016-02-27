@@ -77,7 +77,7 @@ function eventlist_tick!(eventlist::EventList)
   Δt = seconds_to_beats(eventlist.config.buffer_size/eventlist.config.sample_rate, eventlist.config.tempo)
   end_time = eventlist.current_beat + Δt
   # REVIEW Queue, in, take!
-  while length(eventlist.events) && peek(eventlist.events)[2] < end_time
+  while length(eventlist.events) > 0 && peek(eventlist.events)[2] < end_time
     fire_event(dequeue!(eventlist.events))
   end
   eventlist.current_beat = end_time

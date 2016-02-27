@@ -52,9 +52,9 @@ function Base.call(node::Node, frame₀::Int)
 end
 
 function Base.empty!(node::Node)
-  node.audio = Set{Function}
-  node.precontrol = Set{Function}
-  node.postcontrol = Set{Function}
+  node.audio = Set{Function}()
+  node.precontrol = Set{Function}()
+  node.postcontrol = Set{Function}()
 end
 
 Base.isempty(node::Node) = isempty(node.audio) && isempty(node.precontrol) && isempty(node.postcontrol)

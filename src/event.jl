@@ -42,6 +42,7 @@ Base.isempty(eventlist::EventList) = isempty(eventlist.events)
 Base.delete!(eventlist::EventList, event::Event) = delete!(eventlist.events, event)
 
 function fire_event(event::Event)
+  event.f(event.args...)
 end
 
 "Wraps an event with other top-level functions."

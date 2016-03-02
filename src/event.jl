@@ -41,7 +41,7 @@ Base.isempty(eventlist::EventList) = isempty(eventlist.events)
 # FIXME
 Base.delete!(eventlist::EventList, event::Event) = delete!(eventlist.events, event)
 
-function fire_event(event::Event)
+@guarded function fire_event(event::Event)
   event.f(event.args...)
 end
 

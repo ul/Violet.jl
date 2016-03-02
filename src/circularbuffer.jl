@@ -29,9 +29,8 @@ end
 function Base.append!(cb::CircularBuffer, xs)
   for i=1:length(xs)
     @inbounds cb[cb.write_cursor] = xs[i]
-    cb.write_cursor += 1
+    cb.write_cursor = wrap_index(cb.write_cursor+1, cb.size)
   end
-  cb.write_cursor = wrap_index(cb.write_cursor, cb.size)
   cb.pushed += length(xs)
   cb
 end
@@ -39,9 +38,8 @@ end
 function Base.copy!(xs, cb::CircularBuffer, N)
   for i=1:N
     xs[i] = cb[cb.read_cursor]
-    cb.read_cursor += 1
+    cb.read_cursor = wrap_index(cb.read_cursor+1, cb.size)
   end
-  cb.read_cursor = wrap_index(cb.read_cursor, cb.size)
   cb.pulled += N
   xs
 end
@@ -49,9 +47,8 @@ end
 function Base.unsafe_copy!(xs, cb::CircularBuffer, N)
   for i=1:N
     @inbounds xs[i] = cb[cb.read_cursor]
-    cb.read_cursor += 1
+    cb.read_cursor = wrap_index(cb.read_cursor+1, cb.size)
   end
-  cb.read_cursor = wrap_index(cb.read_cursor, cb.size)
   cb.pulled += N
   xs
 end

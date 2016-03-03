@@ -29,10 +29,16 @@ function Base.run(engine::Engine)
     return
   end
   engine.status = :running
-  stream = convert(IO, connect(engine.port))
+  server = listen(engine.port)
+  streams = Set{IO}()
+  @async while isopen(server)
+    stream = convert(IO, accept(server))
+    stream.closecb = (stream) -> delete!(streams, stream)
+    push!(streams, stream)
+  end
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
   Δτ = engine.config.buffer_size/engine.config.sample_rate
-  timer = Timer(0, Δτ)
+  timer = time()
   @async while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
@@ -43,12 +49,16 @@ function Base.run(engine::Engine)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      wait(timer)
-      serialize(stream, buffer)
-      flush(stream)
+      Libc.systemsleep(max(0, Δτ + timer - time()))
+      timer = time()
+      for stream in streams
+        serialize(stream, buffer)
+        flush(stream)
+      end
       engine.frame += engine.config.buffer_size
+      yield()
     else
-      close(stream)
+      close(server)
       break
     end
   end

@@ -1,5 +1,3 @@
-using Reactive
-
 export sine
 
 sine(ν::Signal{Float64}, θ=Signal(Float64, 0)) =

@@ -8,18 +8,20 @@ function init(port=31337,
               output_channels=CONFIG.output_channels,
               sample_rate=CONFIG.sample_rate,
               buffer_size=CONFIG.hardware_buffer_size)
+  global gport = port
+
   PortAudio.initialize()
 
   devID = convert(PaDeviceIndex, -1)
   global audiostream = open(devID,
                             (input_channels, output_channels),
                             sample_rate, buffer_size)
-  global server = listen(port)
+  global stream = convert(IO, connect(port))
   start_stream(audiostream)
 end
 
 function clean()
-  close(server)
+  close(stream)
   stop_stream(audiostream)
   close(audiostream)
   PortAudio.terminate()
@@ -33,9 +35,11 @@ function run()
   end
 
   while true
-    stream = convert(IO, accept(server))
-    @async while isopen(stream)
+    try
       write(audiostream, deserialize(stream))
+    catch
+      sleep(1)
+      global stream = convert(IO, connect(gport))
     end
   end
 end

@@ -37,7 +37,8 @@ function Base.run(engine::Engine)
     push!(streams, stream)
   end
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
-  Δτ = engine.config.buffer_size/engine.config.sample_rate
+  Δτ₀ = engine.config.buffer_size/engine.config.sample_rate
+  Δτ = Δτ₀
   timer = time()
   @async while true
     if engine.status == :running
@@ -50,11 +51,13 @@ function Base.run(engine::Engine)
         engine.empty = false
       end
       Libc.systemsleep(max(0, Δτ + timer - time()))
+      tic()
       timer = time()
       for stream in streams
         serialize(stream, buffer)
         flush(stream)
       end
+      Δτ = Δτ₀ - toq()
       engine.frame += engine.config.buffer_size
       yield()
     else

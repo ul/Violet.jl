@@ -9,7 +9,7 @@ immutable Config
   hardware_buffer_size::Int
 end
 
-Config() = Config(44100, 1024, 1, 2, 60.0, 1024)
+Config() = Config(44100, 64, 1, 2, 60.0, 256)
 
 "Default config"
 CONFIG = Config()

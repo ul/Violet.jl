@@ -57,9 +57,9 @@ function Base.run(engine::Engine)
         serialize(stream, buffer)
         flush(stream)
       end
+      sleep(1e-3)
       Δτ = Δτ₀ - toq()
       engine.frame += engine.config.buffer_size
-      yield()
     else
       close(server)
       break

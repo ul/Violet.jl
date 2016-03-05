@@ -23,6 +23,13 @@ function Engine(port=31337, config=CONFIG)
     0)
 end
 
+@guarded function sendbuffer(buffer, streams)
+  for stream in streams
+    serialize(stream, buffer)
+    flush(stream)
+  end
+end
+
 "Main realtime engine running function. Called within a thread from engine-start."
 function Base.run(engine::Engine)
   if engine.status == :running
@@ -51,12 +58,9 @@ function Base.run(engine::Engine)
         engine.empty = false
       end
       Libc.systemsleep(max(0, Δτ + timer - time()))
-      tic()
       timer = time()
-      for stream in streams
-        serialize(stream, buffer)
-        flush(stream)
-      end
+      tic()
+      sendbuffer(buffer, streams)
       sleep(1e-3)
       Δτ = Δτ₀ - toq()
       engine.frame += engine.config.buffer_size

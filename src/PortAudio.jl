@@ -202,7 +202,7 @@ function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::
   nothing
 end
 
-const MIN_FLUSH_FRAMES = 16
+const MIN_FLUSH_FRAMES = 64
 
 function Base.flush(stream_wrapper::PaStreamWrapper)
   towrite = Pa_GetStreamWriteAvailable(stream_wrapper.stream)

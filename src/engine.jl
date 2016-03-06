@@ -61,9 +61,9 @@ function Base.run(engine::Engine)
       timer = time()
       tic()
       sendbuffer(buffer, streams)
-      sleep(1e-3)
       Δτ = Δτ₀ - toq()
       engine.frame += engine.config.buffer_size
+      sleep(1e-3)
     else
       close(server)
       break

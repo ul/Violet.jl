@@ -23,6 +23,13 @@ function Engine(port=31337, config=CONFIG)
     0)
 end
 
+@guarded function sendbuffer(buffer, streams)
+  for stream in streams
+    serialize(stream, buffer)
+    flush(stream)
+  end
+end
+
 "Main realtime engine running function. Called within a thread from engine-start."
 function Base.run(engine::Engine)
   if engine.status == :running
@@ -37,9 +44,8 @@ function Base.run(engine::Engine)
     push!(streams, stream)
   end
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
-  Δτ₀ = engine.config.buffer_size/engine.config.sample_rate
-  Δτ = Δτ₀
-  timer = time()
+  Δτ = engine.config.buffer_size/engine.config.sample_rate
+  τ₀ = time()
   @async while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
@@ -50,16 +56,10 @@ function Base.run(engine::Engine)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      Libc.systemsleep(max(0, Δτ + timer - time()))
-      tic()
-      timer = time()
-      for stream in streams
-        serialize(stream, buffer)
-        flush(stream)
-      end
-      Δτ = Δτ₀ - toq()
+      Libc.systemsleep(max(0, time() - τ₀ - Δτ*engine.frame))
+      sendbuffer(buffer, streams)
       engine.frame += engine.config.buffer_size
-      yield()
+      sleep(1e-3)
     else
       close(server)
       break

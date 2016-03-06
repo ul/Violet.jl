@@ -202,17 +202,15 @@ function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::
   nothing
 end
 
-const MIN_FLUSH_FRAMES = 16
+const MIN_FLUSH_FRAMES = 64
 
 function Base.flush(stream_wrapper::PaStreamWrapper)
   towrite = Pa_GetStreamWriteAvailable(stream_wrapper.stream)
   n = towrite*stream_wrapper.num_outputs
-  if towrite > MIN_FLUSH_FRAMES &&
-     stream_wrapper.play_buffer.pushed >= stream_wrapper.play_buffer.pulled + towrite
+  if towrite >= MIN_FLUSH_FRAMES &&
+     stream_wrapper.play_buffer.pushed >= stream_wrapper.play_buffer.pulled + n
     unsafe_copy!(stream_wrapper.tmp_buffer, stream_wrapper.play_buffer, n)
     Pa_WriteStream(stream_wrapper.stream, stream_wrapper.tmp_buffer, towrite)
-  else
-    sleep(max(0, (MIN_FLUSH_FRAMES-towrite)/stream_wrapper.sample_rate))
   end
   nothing
 end

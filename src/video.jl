@@ -31,12 +31,17 @@ atexit(clean)
 
 function run()
   @async renderloop(window)
+  reconnect = false
   while true
     try
+      if reconnect
+        global stream = convert(IO, connect(gport))
+        reconnect = false
+      end
       append!(buffer, deserialize(stream))
     catch
       sleep(1)
-      global stream = convert(IO, connect(gport))
+      reconnect = true
     end
   end
 end

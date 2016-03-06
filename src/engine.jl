@@ -45,7 +45,7 @@ function Base.run(engine::Engine)
   end
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
   Δτ = engine.config.buffer_size/engine.config.sample_rate
-  timer = time()
+  τ₀ = time()
   @async while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
@@ -56,8 +56,7 @@ function Base.run(engine::Engine)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      Libc.systemsleep(max(0, Δτ + timer - time()))
-      timer = time()
+      Libc.systemsleep(max(0, time() - τ₀ - Δτ*engine.frame))
       sendbuffer(buffer, streams)
       engine.frame += engine.config.buffer_size
       sleep(1e-3)

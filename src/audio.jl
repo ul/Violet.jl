@@ -32,14 +32,20 @@ atexit(clean)
 function run()
   @async while true
     flush(audiostream)
+    yield()
   end
 
+  reconnect = false
   while true
     try
+      if reconnect
+        global stream = convert(IO, connect(gport))
+        reconnect = false
+      end
       write(audiostream, deserialize(stream))
     catch
       sleep(1)
-      global stream = convert(IO, connect(gport))
+      reconnect = true
     end
   end
 end

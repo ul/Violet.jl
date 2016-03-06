@@ -35,18 +35,8 @@ function run()
     yield()
   end
 
-  reconnect = false
   while true
-    try
-      if reconnect
-        global stream = convert(IO, connect(gport))
-        reconnect = false
-      end
-      write(audiostream, deserialize(stream))
-    catch
-      sleep(1)
-      reconnect = true
-    end
+    write(audiostream, deserialize(stream))
   end
 end
 

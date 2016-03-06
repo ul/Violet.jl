@@ -1,4 +1,4 @@
-export sine
+export sine, constantly, signal
 
 function constantly(x)
   s = Sample(x)
@@ -32,3 +32,4 @@ function sine(ν::Signal{Float64}, θ::Function)
 end
 
 sine(ν, θ=0.0) = sine(constantly(ν), constantly(θ))
+sine(ν::Function, θ=0.0) = sine(ν, constantly(θ))

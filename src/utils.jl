@@ -87,3 +87,14 @@ function addvideo(port=31337, config=CONFIG)
    $(config.buffer_size)`
   spawn(cmd)
 end
+
+# Julia 0.5 only
+
+function thread_run_thunk(thunk)
+  ccall(:jl_threading_run, Void, (Any,), Core.svec(thunk))
+end
+
+macro thread(expr)
+    expr = localize_vars(esc(:(()->($expr))), false)
+    :(thread_run_thunk($expr))
+end

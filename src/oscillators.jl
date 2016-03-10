@@ -1,5 +1,3 @@
-export sine, constantly, signal
-
 function constantly(x)
   s = Sample(x)
   (τ::Time, ι::AudioChannel) -> s

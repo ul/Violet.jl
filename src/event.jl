@@ -1,7 +1,5 @@
 using Base.Collections
 
-export Event, EventList, eventlist_tick!
-
 immutable Event
   f
   start

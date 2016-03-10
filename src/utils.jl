@@ -1,7 +1,5 @@
 using Reactive
 
-export Sample, Time, AudioChannel, addaudio, addvideo
-
 typealias Sample Nullable{Float64}
 typealias Time Float64
 typealias AudioChannel Int

@@ -1,5 +1,3 @@
-export Engine
-
 type Engine
   config::Config
   status::Symbol

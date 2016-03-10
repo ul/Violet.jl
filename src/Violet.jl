@@ -12,4 +12,6 @@ include("engine.jl")
 include("oscillators.jl")
 include("envelopes.jl")
 
+include("exports.jl")
+
 end # module

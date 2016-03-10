@@ -4,7 +4,6 @@ type Engine
   empty::Bool
   root::Node
   eventlist::EventList
-  #stream::IO
   port::Int
   frame::Int
 end
@@ -16,16 +15,8 @@ function Engine(port=31337, config=CONFIG)
     false,
     Node(config),
     EventList(config),
-    #convert(IO, connect(port)),
     port,
     0)
-end
-
-@guarded function sendbuffer(buffer, streams)
-  for stream in streams
-    serialize(stream, buffer)
-    flush(stream)
-  end
 end
 
 "Main realtime engine running function. Called within a thread from engine-start."
@@ -34,16 +25,8 @@ function Base.run(engine::Engine)
     return
   end
   engine.status = :running
-  server = listen(engine.port)
-  streams = Set{IO}()
-  @async while isopen(server)
-    stream = convert(IO, accept(server))
-    stream.closecb = (stream) -> delete!(streams, stream)
-    push!(streams, stream)
-  end
+  stream = audiostream(engine.config)
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
-  Δτ = engine.config.buffer_size/engine.config.sample_rate
-  τ₀ = time()
   @async while true
     if engine.status == :running
       eventlist_tick!(engine.eventlist)
@@ -54,12 +37,11 @@ function Base.run(engine::Engine)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      Libc.systemsleep(max(0, time() - τ₀ - Δτ*engine.frame))
-      sendbuffer(buffer, streams)
+      write(stream, buffer)
       engine.frame += engine.config.buffer_size
-      sleep(1e-3)
+      sleep(0)
     else
-      close(server)
+      kill(stream)
       break
     end
   end

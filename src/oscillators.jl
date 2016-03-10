@@ -29,5 +29,5 @@ function sine(ν::Signal{Float64}, θ::Function)
   sine(signal(ν), θ)
 end
 
-sine(ν, θ=0.0) = sine(constantly(ν), constantly(θ))
+sine(ν::Float64, θ=0.0) = sine(constantly(ν), constantly(θ))
 sine(ν::Function, θ=0.0) = sine(ν, constantly(θ))

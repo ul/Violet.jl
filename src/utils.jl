@@ -67,25 +67,6 @@ function _guarded(ex, retval)
   end
 end
 
-function addaudio(port=31337, config=CONFIG)
-  cmd = `julia
-   $(Pkg.dir("Violet", "src", "audio.jl"))
-   $port
-   $(config.input_channels)
-   $(config.output_channels)
-   $(config.sample_rate)
-   $(config.hardware_buffer_size)`
-  spawn(cmd)
-end
-
-function addvideo(port=31337, config=CONFIG)
-  cmd = `julia
-   $(Pkg.dir("Violet", "src", "video.jl"))
-   $port
-   $(config.buffer_size)`
-  spawn(cmd)
-end
-
 # Julia 0.5 only
 
 function thread_run_thunk(thunk)

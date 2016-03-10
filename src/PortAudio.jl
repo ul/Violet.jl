@@ -1,6 +1,6 @@
 module PortAudio
 
-export PaStream, PaBuffer, PaSample, PaDeviceIndex
+export PaStream, PaBuffer, PaSample, PaDeviceIndex, PaStreamWrapper
 export start_stream, stop_stream
 
 include(Pkg.dir("Violet", "deps", "deps.jl"))
@@ -197,21 +197,22 @@ function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::
   (stream_wrapper.num_outputs > size(buffer,2) || Nframes > size(buffer,1)) &&
     error("Buffer dimensions do not fit stream parameters")
 
-  interleave(buffer, stream_wrapper.play_buffer, stream_wrapper.num_outputs, Nframes)
+  stream = stream_wrapper.stream
+  play = stream_wrapper.play_buffer
+  tmp = stream_wrapper.tmp_buffer
+  channels = stream_wrapper.num_outputs
 
-  nothing
-end
+  interleave(buffer, play, channels, Nframes)
 
-const MIN_FLUSH_FRAMES = 64
-
-function Base.flush(stream_wrapper::PaStreamWrapper)
-  towrite = Pa_GetStreamWriteAvailable(stream_wrapper.stream)
-  n = towrite*stream_wrapper.num_outputs
-  if towrite >= MIN_FLUSH_FRAMES &&
-     stream_wrapper.play_buffer.pushed >= stream_wrapper.play_buffer.pulled + n
-    unsafe_copy!(stream_wrapper.tmp_buffer, stream_wrapper.play_buffer, n)
-    Pa_WriteStream(stream_wrapper.stream, stream_wrapper.tmp_buffer, towrite)
+  towrite = Pa_GetStreamWriteAvailable(stream)
+  n = towrite*channels
+  while towrite > 0 && play.pushed >= play.pulled + n
+    unsafe_copy!(tmp, play, n)
+    Pa_WriteStream(stream, tmp, towrite)
+    towrite = Pa_GetStreamWriteAvailable(stream)
+    n = towrite*channels
   end
+
   nothing
 end
 

@@ -20,19 +20,15 @@ end
 
 const WORLD = World(Entity2Components(), Component2Entities())
 
-function Base.convert{T<:Component}(world::World, t::Type{T}, e::Entity)
+function Base.convert{T<:Component}(t::Type{T}, e::Entity, world=WORLD)
   world.entity2components[e][t]
 end
 
-Base.convert{T<:Component}(t::Type{T}, e::Entity) = convert(WORLD, t, e)
-
-function Base.in{T<:Component}(world::World, t::Type{T}, e::Entity)
+function Base.in{T<:Component}(t::Type{T}, e::Entity, world=WORLD)
   haskey(world.component2entities, t) && e in world.component2entities[t]
 end
 
-Base.in{T<:Component}(t::Type{T}, e::Entity) = in(WORLD, t, e)
-
-function Base.push!(world::World, c::Component, e::Entity)
+function Base.push!(c::Component, e::Entity, world=WORLD)
   t = typeof(c)
   if haskey(world.entity2components, e)
     world.entity2components[e][t] = c
@@ -45,16 +41,12 @@ function Base.push!(world::World, c::Component, e::Entity)
   push!(world.component2entities[t], e)
 end
 
-Base.push!(c::Component, e::Entity) = push!(WORLD, c, e)
-
-function Base.delete!{T<:Component}(world::World, t::Type{T}, e::Entity)
+function Base.delete!{T<:Component}(t::Type{T}, e::Entity, world=WORLD)
   delete!(world.entity2components[e], t)
   delete!(world.component2entities[t], e)
 end
 
-Base.delete!{T<:Component}(t::Type{T}, e::Entity) = delete!(WORLD, t, e)
-
-function Entity(world::World, components::Vector{Component})
+function Entity(components::Vector{Component}, world=WORLD)
   e = gensym()
   for c in components
     push!(world, c, e)
@@ -62,9 +54,7 @@ function Entity(world::World, components::Vector{Component})
   e
 end
 
-Entity(components::Vector{Component}) = Entity(WORLD, components)
-
-function Base.delete!(world::World, e::Entity)
+function Base.delete!(e::Entity, world=WORLD)
   ts = keys(world.entity2components[e])
   delete!(world.entity2components, e)
   for t in ts
@@ -72,14 +62,10 @@ function Base.delete!(world::World, e::Entity)
   end
 end
 
-Base.delete!(e::Entity) = delete!(WORLD, e)
-
-function entities{T<:Component}(world::World, t::Type{T})
+function entities{T<:Component}(t::Type{T}, world=WORLD)
   world.component2entities[t]
 end
 
-entities{T<:Component}(t::Type{T}) = entities(WORLD, t)
-
-call{T<:Component}(e::Entity, t::Type{T}) = convert(t, e)
+call{T<:Component}(e::Entity, t::Type{T}, world=WORLD) = convert(t, e, world)
 
 end

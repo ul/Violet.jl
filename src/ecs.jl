@@ -6,12 +6,11 @@ typealias Entity Symbol
 typealias Entities Set{Entity}
 
 abstract Component
+typealias ComponentType{T<:Component} Type{T}
 
-#typealias Component2Instance Dict{Type{Component}, Component}
-typealias Component2Instance Dict{Type, Component}
+typealias Component2Instance Dict{ComponentType, Component}
 typealias Entity2Components Dict{Entity, Component2Instance}
-#typealias Component2Entities Dict{Type{Component}, Entities}
-typealias Component2Entities Dict{Type, Entities}
+typealias Component2Entities Dict{ComponentType, Entities}
 
 type World
   entity2components::Entity2Components

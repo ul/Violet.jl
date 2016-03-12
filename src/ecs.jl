@@ -8,10 +8,10 @@ typealias Entities Set{Entity}
 abstract Component
 
 #typealias Component2Instance Dict{Type{Component}, Component}
-typealias Component2Instance Dict{Any, Component}
+typealias Component2Instance Dict{Type, Component}
 typealias Entity2Components Dict{Entity, Component2Instance}
 #typealias Component2Entities Dict{Type{Component}, Entities}
-typealias Component2Entities Dict{Any, Entities}
+typealias Component2Entities Dict{Type, Entities}
 
 type World
   entity2components::Entity2Components

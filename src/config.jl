@@ -1,5 +1,3 @@
-export Config, CONFIG
-
 immutable Config
   sample_rate::Int
   buffer_size::Int

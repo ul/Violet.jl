@@ -1,5 +1,3 @@
-export Node, run
-
 type Node
   audio::Set{Function}
   precontrol::Set{Function}

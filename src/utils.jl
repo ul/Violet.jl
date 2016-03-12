@@ -1,7 +1,5 @@
 using Reactive
 
-export Sample, Time, AudioChannel, addaudio, addvideo
-
 typealias Sample Nullable{Float64}
 typealias Time Float64
 typealias AudioChannel Int
@@ -69,21 +67,13 @@ function _guarded(ex, retval)
   end
 end
 
-function addaudio(port=31337, config=CONFIG)
-  cmd = `julia
-   $(Pkg.dir("Violet", "src", "audio.jl"))
-   $port
-   $(config.input_channels)
-   $(config.output_channels)
-   $(config.sample_rate)
-   $(config.hardware_buffer_size)`
-  spawn(cmd)
+# Julia 0.5 only
+
+function thread_run_thunk(thunk)
+  ccall(:jl_threading_run, Void, (Any,), Core.svec(thunk))
 end
 
-function addvideo(port=31337, config=CONFIG)
-  cmd = `julia
-   $(Pkg.dir("Violet", "src", "video.jl"))
-   $port
-   $(config.buffer_size)`
-  spawn(cmd)
+macro thread(expr)
+    expr = localize_vars(esc(:(()->($expr))), false)
+    :(thread_run_thunk($expr))
 end

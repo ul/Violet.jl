@@ -31,3 +31,17 @@ end
 
 sine(ν::Float64, θ=0.0) = sine(constantly(ν), constantly(θ))
 sine(ν::Function, θ=0.0) = sine(ν, constantly(θ))
+
+function saw(ν)
+  function (τ::Time, ι::AudioChannel)
+    x = ν*τ
+    2(x - floor(x)) - 1 |> Sample
+  end
+end
+
+function tri(ν)
+  function (τ::Time, ι::AudioChannel)
+    x = 2ν*τ
+    4abs(x - floor(x + 0.5)) - 1 |> Sample
+  end
+end

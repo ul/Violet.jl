@@ -1,7 +1,7 @@
 function audiostream(config=CONFIG)
   devID = convert(PaDeviceIndex, -1)
   audiostream = open(devID, (config.input_channels, config.output_channels),
-    config.sample_rate, config.hardware_buffer_size)
+    config.sample_rate, config.buffer_size)
   start_stream(audiostream)
   audiostream
 end

@@ -1,10 +1,12 @@
 using Base.Collections
 
 immutable Event
-  f
-  start
-  args
+  f::Function
+  start::Time
+  args::Vector
 end
+
+Event(f, start) = Event(f, start, [])
 
 typealias EventQueue PriorityQueue{Event, Time}
 EventQueue() = PriorityQueue(Event, Time)
@@ -12,7 +14,7 @@ EventQueue() = PriorityQueue(Event, Time)
 type EventList
   events::EventQueue
   pending_events::Vector{Event}
-  current_beat::Time
+  beat::Time
   config::Config
 end
 
@@ -36,7 +38,6 @@ Base.append!(eventlist::EventList, events::Vector{Event}) = append!(eventlist.pe
 Base.push!(eventlist::EventList, event::Event) = push!(eventlist.pending_events, event)
 Base.empty!(eventlist::EventList) = empty!(eventlist.events)
 Base.isempty(eventlist::EventList) = isempty(eventlist.events)
-# FIXME
 Base.delete!(eventlist::EventList, event::Event) = delete!(eventlist.events, event)
 
 @guarded function fire_event(event::Event)
@@ -61,8 +62,8 @@ function merge_pending!(eventlist::EventList)
     # FIXME make atomic
     new_events = copy(eventlist.pending_events)
     empty!(eventlist.pending_events)
-    timed_events = map((e::Event) -> alter_event_time(eventlist.current_beat + e.start, e), new_events)
-    for e in timed_events
+    for e in new_events
+      e = alter_event_time(eventlist.beat + e.start, e)
       eventlist.events[e] = e.start
     end
   end
@@ -71,14 +72,12 @@ end
 seconds_to_beats(seconds, tempo) = seconds * tempo / 60
 beats_to_seconds(beats, tempo) = beats * 60 / tempo
 
-function eventlist_tick!(eventlist::EventList)
+function Base.call(eventlist::EventList, endframe::Int)
   merge_pending!(eventlist)
-  Δt = seconds_to_beats(eventlist.config.buffer_size/eventlist.config.sample_rate, eventlist.config.tempo)
-  end_time = eventlist.current_beat + Δt
-  # REVIEW Queue, in, take!
-  while length(eventlist.events) > 0 && peek(eventlist.events)[2] < end_time
+  beat = seconds_to_beats(endframe/eventlist.config.sample_rate, eventlist.config.tempo)
+  while length(eventlist.events) > 0 && peek(eventlist.events)[2] < beat
     fire_event(dequeue!(eventlist.events))
   end
-  eventlist.current_beat = end_time
+  eventlist.beat = beat
   !isempty(eventlist)
 end

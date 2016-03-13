@@ -19,7 +19,6 @@ function Engine(port=31337, config=CONFIG)
     0)
 end
 
-"Main realtime engine running function. Called within a thread from engine-start."
 function Base.run(engine::Engine)
   if engine.status == :running
     return
@@ -27,19 +26,23 @@ function Base.run(engine::Engine)
   engine.status = :running
   stream = audiostream(engine.config)
   buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
+  δframes = 0
   @async while true
     if engine.status == :running
-      eventlist_tick!(engine.eventlist)
-      engine.root(engine.frame)
+      tic()
+      Δframes = min(engine.config.buffer_size, writeavailable(stream) + δframes)
+      engine.eventlist(engine.frame + Δframes)
+      engine.root(engine.frame, Δframes)
       @inbounds copy!(buffer, engine.root.buffer)
       if engine.empty
         empty!(engine.root)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      write(stream, buffer)
-      engine.frame += engine.config.buffer_size
+      write(stream, buffer, Δframes)
+      engine.frame += Δframes
       sleep(0)
+      δframes = round(Int, toq()*engine.config.sample_rate)
     else
       kill(stream)
       break

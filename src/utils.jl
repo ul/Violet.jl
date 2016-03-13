@@ -1,5 +1,3 @@
-using Reactive
-
 typealias Sample Nullable{Float64}
 typealias Time Float64
 typealias AudioChannel Int
@@ -74,6 +72,6 @@ function thread_run_thunk(thunk)
 end
 
 macro thread(expr)
-    expr = localize_vars(esc(:(()->($expr))), false)
+    expr = Base.localize_vars(esc(:(()->($expr))), false)
     :(thread_run_thunk($expr))
 end

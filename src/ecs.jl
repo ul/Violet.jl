@@ -62,7 +62,11 @@ function Base.delete!(e::Entity, world=WORLD)
 end
 
 function entities{T<:Component}(t::Type{T}, world=WORLD)
-  world.component2entities[t]
+  if haskey(world.component2entities, t)
+    world.component2entities[t]
+  else
+    Entities()
+  end
 end
 
 call{T<:Component}(e::Entity, t::Type{T}, world=WORLD) = convert(t, e, world)

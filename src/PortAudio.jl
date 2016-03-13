@@ -1,7 +1,7 @@
 module PortAudio
 
 export PaStream, PaBuffer, PaSample, PaDeviceIndex, PaStreamWrapper
-export start_stream, stop_stream
+export start_stream, stop_stream, writeavailable
 
 include(Pkg.dir("Violet", "deps", "deps.jl"))
 include("circularbuffer.jl")
@@ -192,26 +192,33 @@ end
   end
 end
 
+writeavailable(stream_wrapper::PaStreamWrapper) =
+  Pa_GetStreamWriteAvailable(stream_wrapper.stream)
+
 "Write a buffer to a PortAudio stream"
 function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::Integer=size(buffer,1))
   (stream_wrapper.num_outputs > size(buffer,2) || Nframes > size(buffer,1)) &&
     error("Buffer dimensions do not fit stream parameters")
 
   stream = stream_wrapper.stream
-  play = stream_wrapper.play_buffer
+  #play = stream_wrapper.play_buffer
   tmp = stream_wrapper.tmp_buffer
   channels = stream_wrapper.num_outputs
 
-  interleave(buffer, play, channels, Nframes)
+  interleave(buffer, tmp, channels, Nframes)
+  Pa_WriteStream(stream, tmp, Nframes)
 
-  towrite = Pa_GetStreamWriteAvailable(stream)
-  n = towrite*channels
-  while towrite > 0 && play.pushed >= play.pulled + n
-    unsafe_copy!(tmp, play, n)
-    Pa_WriteStream(stream, tmp, towrite)
+  #=towrite = Pa_GetStreamWriteAvailable(stream)
+  while play.pushed > play.pulled
     towrite = Pa_GetStreamWriteAvailable(stream)
-    n = towrite*channels
-  end
+    if towrite > 0
+      n = min(towrite*channels, play.pushed - play.pulled)
+      unsafe_copy!(tmp, play, n)
+      Pa_WriteStream(stream, tmp, towrite)
+    else
+      sleep(0)
+    end
+  end=#
 
   nothing
 end

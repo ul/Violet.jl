@@ -48,7 +48,7 @@ end
 function Entity(components::Vector{Component}, world=WORLD)
   e = gensym()
   for c in components
-    push!(world, c, e)
+    push!(c, e, world)
   end
   e
 end
@@ -72,3 +72,4 @@ end
 call{T<:Component}(e::Entity, t::Type{T}, world=WORLD) = convert(t, e, world)
 
 end
+  

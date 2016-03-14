@@ -1,10 +1,15 @@
 module Violet
 
+using Reactive
+
 include("PortAudio.jl")
 using Violet.PortAudio
 
 Violet.PortAudio.initialize()
 atexit(Violet.PortAudio.terminate)
+
+include("ecs.jl")
+#include("ui.jl")
 
 include("utils.jl")
 include("config.jl")
@@ -19,5 +24,3 @@ include("envelopes.jl")
 include("exports.jl")
 
 end # module
-
-include("ecs.jl")

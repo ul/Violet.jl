@@ -14,8 +14,8 @@ end
 
 function fop(op, f₁::AudioControl, f₂::AudioControl)
   isa(f₁, Float64) && isa(f₂, Float64) && return op(f₁, f₂)
-  g₁ = convert(Function, f₁)
-  g₂ = convert(Function, f₂)
+  g₁ = convert(AudioSignal, f₁)
+  g₂ = convert(AudioSignal, f₂)
   function (τ::Time, ι::AudioChannel)
     @sample x₁ = g₁(τ, ι)
     @sample x₂ = g₂(τ, ι)
@@ -39,9 +39,9 @@ signal(x::Signal{Float64}) =
 signal(x::Signal{Array{Float64}}) =
   (τ::Time, ι::AudioChannel) -> @inbounds x[ι] |> value |> Sample
 
-Base.convert(::Type{Function}, x::Signal{Float64}) = signal(x)
-Base.convert(::Type{Function}, x::Signal{Array{Float64}}) = signal(x)
-Base.convert(::Type{Function}, x::Float64) = constantly(x)
+Base.convert(::Type{AudioSignal}, x::Signal{Float64}) = signal(x)
+Base.convert(::Type{AudioSignal}, x::Signal{Array{Float64}}) = signal(x)
+Base.convert(::Type{AudioSignal}, x::Float64) = constantly(x)
 
 macro audiosignal(ex)
   ex.head != :function &&
@@ -54,11 +54,11 @@ macro audiosignal(ex)
   τ = signature[end - 1] # τ::Time
   ι = signature[end]     # ι::AudioChannel
 
-  # e.g. Function, Function, Time, AudioChannel
+  # e.g. AudioSignal, AudioSignal, Time, AudioChannel
   _types = map((x) -> x.args[2], signature[2:end])
   types = Expr(:tuple, _types...)
 
-  # e.g. fν::Function, fθ::Function
+  # e.g. fν::AudioSignal, fθ::AudioSignal
   bindargs = signature[2:end-2]
 
   # e.g. fν::AudioControl, fθ::AudioControl
@@ -67,9 +67,9 @@ macro audiosignal(ex)
   end
 
   conversions = map(bindargs) do arg
-    # e.g. convert(Function, fν)
+    # e.g. convert(AudioSignal, fν)
     x = arg.args[1]
-    :($x = convert(Function, $x))
+    :($x = convert(AudioSignal, $x))
   end
 
   wrapper = quote
@@ -88,7 +88,7 @@ end
 
 ### Waves ###
 
-@audiosignal function sine(fν::Function, fθ::Function, τ::Time, ι::AudioChannel)
+@audiosignal function sine(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
   @sample ν = fν(τ, ι)
   @sample θ = fθ(τ, ι)
   2.0muladd(ν, τ, θ) |> sinpi |> Sample
@@ -96,7 +96,7 @@ end
 
 sine(ν) = sine(ν, 0.0)
 
-@audiosignal function saw(fν::Function, fθ::Function, τ::Time, ι::AudioChannel)
+@audiosignal function saw(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
   @sample ν = fν(τ, ι)
   @sample θ = fθ(τ, ι)
   x = muladd(ν, τ, θ)
@@ -105,7 +105,7 @@ end
 
 saw(ν) = saw(ν, 0.0)
 
-@audiosignal function tri(fν::Function, fθ::Function, τ::Time, ι::AudioChannel)
+@audiosignal function tri(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
   @sample ν = fν(τ, ι)
   @sample θ = fθ(τ, ι)
   x = 2.0muladd(ν, τ, θ)

@@ -23,6 +23,7 @@ include("audio.jl")
 include("engine.jl")
 include("oscillators.jl")
 include("envelopes.jl")
+include("swapper.jl")
 
 include("exports.jl")
 

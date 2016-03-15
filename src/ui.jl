@@ -10,16 +10,22 @@ type Draw<:Component
 end
 
 type Position<:Component
-  x::Signal{Real}
-  y::Signal{Real}
-  updater::Signal # just to prevent update logic from GCing
+  position::Signal{Vector2f}
 end
 
 function makecircle()
   circle = SFML.CircleShape()
+
+  pos = Signal(Vector2f(500.1, 200))
+  updatepos = foreach((x) -> set_position(circle, x), pos)
+  set_position(circle, value(pos))
+
   set_radius(circle, 40)
-  set_position(circle, Vector2f(500.1, 200))
   set_fillcolor(circle, SFML.red)
+
+  Entity([
+    Draw((_, window) -> draw(window, circle)),
+    Position(pos)])
 end
 
 function window(title::AbstractString, width::Integer, height::Integer)
@@ -32,6 +38,7 @@ end
 
 function Base.run(window::RenderWindow, world=WORLD)
   event = SFML.Event()
+  makecircle()
   while isopen(window)
     while pollevent(window, event)
       if get_type(event) == EventType.CLOSED
@@ -43,6 +50,7 @@ function Base.run(window::RenderWindow, world=WORLD)
       e(Draw).draw(e, window)
     end
     display(window)
+    sleep(0)
   end
 end
 

@@ -1,5 +1,5 @@
 type Node
-  audio::Set{Function}
+  audio::Set{AudioSignal}
   precontrol::Set{Function}
   postcontrol::Set{Function}
   status::Symbol
@@ -8,7 +8,7 @@ type Node
 end
 
 Node(config=CONFIG) =
-  Node(Set{Function}(), Set{Function}(), Set{Function}(), :ok, config,
+  Node(Set{AudioSignal}(), Set{Function}(), Set{Function}(), :ok, config,
   zeros(Float64, (config.buffer_size, config.output_channels)))
 
 # currently will continue rendering even if afs are empty. need to have
@@ -50,7 +50,7 @@ function Base.call(node::Node, frame₀::Int, Δframes=node.config.buffer_size)
 end
 
 function Base.empty!(node::Node)
-  node.audio = Set{Function}()
+  node.audio = Set{AudioSignal}()
   node.precontrol = Set{Function}()
   node.postcontrol = Set{Function}()
 end

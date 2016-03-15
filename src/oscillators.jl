@@ -1,3 +1,33 @@
+### Utils ###
+
+macro sample(ex)
+  ex.head != :(=) &&
+    error("@sample works only with `x = f(τ, ι)` form, got ", ex)
+  x = gensym()
+  wrapper = quote
+    $x = $(ex.args[2])
+    isnull($x) && return Sample()
+    $(ex.args[1]) = get($x)
+  end
+  esc(wrapper)
+end
+
+function fop(op, f₁::AudioControl, f₂::AudioControl)
+  isa(f₁, Float64) && isa(f₂, Float64) && return op(f₁, f₂)
+  g₁ = convert(AudioSignal, f₁)
+  g₂ = convert(AudioSignal, f₂)
+  function (τ::Time, ι::AudioChannel)
+    @sample x₁ = g₁(τ, ι)
+    @sample x₂ = g₂(τ, ι)
+    op(x₁, x₂) |> Sample
+  end
+end
+
+Base.(:+)(f₁::AudioControl, f₂::AudioControl) = fop(+, f₁, f₂)
+Base.(:-)(f₁::AudioControl, f₂::AudioControl) = fop(-, f₁, f₂)
+Base.(:*)(f₁::AudioControl, f₂::AudioControl) = fop(*, f₁, f₂)
+Base.(:/)(f₁::AudioControl, f₂::AudioControl) = fop(/, f₁, f₂)
+
 function constantly(x)
   s = Sample(x)
   (τ::Time, ι::AudioChannel) -> s
@@ -9,44 +39,77 @@ signal(x::Signal{Float64}) =
 signal(x::Signal{Array{Float64}}) =
   (τ::Time, ι::AudioChannel) -> @inbounds x[ι] |> value |> Sample
 
-function sine(fν::Function, fθ::Function, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  isnull(ν) && return Sample()
-  θ = fθ(τ, ι)
-  isnull(θ) && return Sample()
-  2.0muladd(get(ν), τ, get(θ)) |> sinpi |> Sample
+Base.convert(::Type{AudioSignal}, x::Signal{Float64}) = signal(x)
+Base.convert(::Type{AudioSignal}, x::Signal{Array{Float64}}) = signal(x)
+Base.convert(::Type{AudioSignal}, x::Float64) = constantly(x)
+
+macro audiosignal(ex)
+  ex.head != :function &&
+    error("@audiosignal works only with `function myfunc(...)` form, got ", ex)
+
+  signature = ex.args[1].args
+  name = signature[1]
+  body = ex.args[2]
+
+  τ = signature[end - 1] # τ::Time
+  ι = signature[end]     # ι::AudioChannel
+
+  # e.g. AudioSignal, AudioSignal, Time, AudioChannel
+  _types = map((x) -> x.args[2], signature[2:end])
+  types = Expr(:tuple, _types...)
+
+  # e.g. fν::AudioSignal, fθ::AudioSignal
+  bindargs = signature[2:end-2]
+
+  # e.g. fν::AudioControl, fθ::AudioControl
+  wrapperargs = map(bindargs) do arg
+    Expr(arg.head, arg.args[1], :AudioControl)
+  end
+
+  conversions = map(bindargs) do arg
+    # e.g. convert(AudioSignal, fν)
+    x = arg.args[1]
+    :($x = convert(AudioSignal, $x))
+  end
+
+  wrapper = quote
+    $ex
+
+    function $name($(wrapperargs...))
+      $(conversions...)
+      ($τ, $ι) -> $body
+    end
+
+    precompile($name, $types)
+  end
+
+  esc(wrapper)
 end
 
-precompile(sine, (Function, Function, Time, AudioChannel))
+### Waves ###
 
-sine(fν::Function, fθ::Function) =
-  (τ::Time, ι::AudioChannel) -> sine(fν, fθ, τ, ι)
+@audiosignal function sine(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
+  @sample ν = fν(τ, ι)
+  @sample θ = fθ(τ, ι)
+  2.0muladd(ν, τ, θ) |> sinpi |> Sample
+end
 
-sine(ν::Signal{Float64}, θ=Signal(Float64, 0.0)) = sine(signal(ν), signal(θ))
-sine(ν::Signal{Float64}, θ::Function) = sine(signal(ν), θ)
-sine(ν::Float64, θ=0.0) = sine(constantly(ν), constantly(θ))
-sine(ν::Function, θ=0.0) = sine(ν, constantly(θ))
+sine(ν) = sine(ν, 0.0)
 
-function saw(fν::Function, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  isnull(ν) && return Sample()
-  x = get(ν)*τ
+@audiosignal function saw(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
+  @sample ν = fν(τ, ι)
+  @sample θ = fθ(τ, ι)
+  x = muladd(ν, τ, θ)
   2(x - floor(x)) - 1 |> Sample
 end
 
-precompile(saw, (Function, Time, AudioChannel))
+saw(ν) = saw(ν, 0.0)
 
-saw(fν::Function) = (τ::Time, ι::AudioChannel) -> saw(fν, τ, ι)
-saw(ν) = saw(constantly(ν))
-
-function tri(fν::Function, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  isnull(ν) && return Sample()
-  x = 2get(ν)*τ
+@audiosignal function tri(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
+  @sample ν = fν(τ, ι)
+  @sample θ = fθ(τ, ι)
+  x = 2.0muladd(ν, τ, θ)
   4abs(x - floor(x + 0.5)) - 1 |> Sample
 end
 
-precompile(tri, (Function, Time, AudioChannel))
-
-tri(fν::Function) = (τ::Time, ι::AudioChannel) -> tri(fν, τ, ι)
-tri(ν) = tri(constantly(ν))
+tri(ν) = tri(ν, 0.0)

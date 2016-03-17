@@ -49,7 +49,7 @@ f1 = sine(440.0)
 newswap = Swapper(engine, myfirstsound)
 ```
 
-With swappers don't need to push it manual to engine, it'll pushed when you run it:
+With swappers you don't need to push it manual to engine, it'll pushed when you run it:
 ```
 run(newswap)
 ```

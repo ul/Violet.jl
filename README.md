@@ -42,10 +42,8 @@ somethingelse = (sine(tri(3.3) + tri(2.0)) * myfirstsound)
 
 ##Swappers
 
-Swapper is a type.
-Swapper can easily switch any signals you create:
+Swapper is a type, Once created, it can easily switch any signals you create:
 ```
-f1 = sine(440.0)
 newswap = Swapper(engine, myfirstsound)
 ```
 

@@ -36,8 +36,9 @@ delete!(engine.root.audio, myfirstsound)
 ```
 
 You can create also saw() and tri() waves, in any combinations:
-
+```
 somethingelse = (sine(tri(3.3) + tri(2.0)) * myfirstsound)
+```
 
 ##Swappers
 

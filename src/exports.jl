@@ -9,6 +9,7 @@ export Config, CONFIG
 export Engine
 export Event, EventList
 export Node
+export Swapper
 # functions & macros
 export env
 export sine, constantly, signal, saw, tri, @audiosignal, @sample

@@ -9,7 +9,7 @@ julia:
 notifications:
   email: false
 before_install:
-  - [ -x /usr/bin/apt-get ] && sudo apt-get install portaudio19-dev
+  - if [[ -x /usr/bin/apt-get ]]; then sudo apt-get install portaudio19-dev; fi
 # uncomment the following lines to override the default test script
 #script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi

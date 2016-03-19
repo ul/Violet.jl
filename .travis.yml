@@ -10,6 +10,7 @@ notifications:
   email: false
 before_install:
   - if [[ -x /usr/bin/apt-get ]]; then sudo apt-get install portaudio19-dev; fi
+  - julia -e 'Pkg.clone("https://github.com/zyedidia/SFML.jl"); Pkg.build("SFML")'
 # uncomment the following lines to override the default test script
 #script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi

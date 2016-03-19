@@ -1,5 +1,7 @@
 # Violet
 
+[![Build Status](https://travis-ci.org/ul/Violet.jl.svg?branch=master)](https://travis-ci.org/ul/Violet.jl)
+
 A library for music systems development, written in Julia.
 
 Pre-α.
@@ -8,9 +10,9 @@ Heavily inspired by [Pink](https://github.com/kunstmusik/pink) and [Extempore](h
 
 Uses [PortAudio](http://portaudio.com/) as an audio I/O backend, wrapper is based on [PortAudio.jl](https://github.com/seebk/PortAudio.jl)
 
-# Manual
+## Getting started
 
-## Start
+### Start
 
 First, you must create and start your engine. It can be done with:
 ```
@@ -20,7 +22,7 @@ run(engine)
 
 Then, you can create something that you want to sound. Let it be 440Hz sine:
 ```
-myfirstsine = sine(440.0)
+myfirstsound = sine(440.0)
 ```
 
 And push it to engine:
@@ -28,7 +30,7 @@ And push it to engine:
 push!(engine.root.audio, myfirstsound)
 ```
 
-Yeah. Violet talking to you :)
+Yeah. Violet is talking to you :-)
 
 Then turn it off:
 ```
@@ -40,14 +42,14 @@ You can create also saw() and tri() waves, in any combinations:
 somethingelse = (sine(tri(3.3) + tri(2.0)) * myfirstsound)
 ```
 
-##Swappers
+### Swappers
 
-Swapper is a type, once created, it can easily switch any signals you create:
+Swapper is a type, once instantiated, it can easily switch any signals you create:
 ```
 newswap = Swapper(engine, myfirstsound)
 ```
 
-With swappers you don't need to push it manual to engine, it'll pushed when you run it:
+With swappers you don't need to push audiosignal manually to engine, it'll be pushed when you run it:
 ```
 run(newswap)
 ```
@@ -57,7 +59,9 @@ And now feed swapper with another signal:
 newswap(somethingelse)
 ```
 
-When you don't need it anymore, delete the swapper:
+To switch off audiosignal kill the swapper:
 ```
 kill(newswap)
 ```
+
+It could run again later.

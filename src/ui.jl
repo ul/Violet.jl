@@ -1,31 +1,56 @@
 module UI
-using Reactive, SFML, Violet.ECS
+using Reactive, SFML
 
-export window, Draw
+export window
 
-# NOTE: we won't use `able` suffix for component names
+typealias Position Signal{Vector2f}
+typealias Size Signal{Vector2f}
 
-type Draw<:Component
-  draw::Function
+#= Scrapbook
+function draw(window::RenderWindow, object::CircleShape, renderStates::Ptr{Void})
+foreach((x) -> set_position(circle, x), pos)
+=#
+
+type Node
+  object::Drawable
+  children::Vector{Node}
 end
 
-type Position<:Component
-  position::Signal{Vector2f}
+type Tree
+  root::Node
 end
 
-function makecircle()
-  circle = SFML.CircleShape()
+Node(object::Drawable) = Node(object, Node[])
 
-  pos = Signal(Vector2f(500.1, 200))
-  updatepos = foreach((x) -> set_position(circle, x), pos)
-  set_position(circle, value(pos))
+Base.push!(node::Node, child::Node) = push!(node.children, child)
 
-  set_radius(circle, 40)
-  set_fillcolor(circle, SFML.red)
+function Base.delete!(node::Node, child::Node)
+  n = findfirst(node.children, child)
+  if n > 0
+    deleteat!(node.children, n)
+  end
+end
 
-  Entity([
-    Draw((_, window) -> draw(window, circle)),
-    Position(pos)])
+Base.deleteat!(node::Node, n) = deleteat!(node.children, n)
+
+type GUI
+  window::RenderWindow
+  root::Node
+end
+
+function draw(window::RenderWindow, node::Node)
+  draw(window, node)
+  for c in node.children
+    draw(window, c)
+  end
+end
+
+draw(gui::GUI) = draw(gui.window, gui.root)
+
+function oscilloscope(points, x, y, width, height)
+  box = SFML.RectangleShape()
+  position = Position(x, y)
+  size = Size(width, height)
 end
 
 function window(title::AbstractString, width::Integer, height::Integer)
@@ -36,9 +61,9 @@ function window(title::AbstractString, width::Integer, height::Integer)
   w
 end
 
-function Base.run(window::RenderWindow, world=WORLD)
+function Base.run(gui::GUI)
+  window = gui.window
   event = SFML.Event()
-  makecircle()
   while isopen(window)
     while pollevent(window, event)
       if get_type(event) == EventType.CLOSED
@@ -46,9 +71,7 @@ function Base.run(window::RenderWindow, world=WORLD)
       end
     end
     clear(window, SFML.black)
-    for e in entities(Draw)
-      e(Draw).draw(e, window)
-    end
+    draw(gui)
     display(window)
     sleep(0)
   end

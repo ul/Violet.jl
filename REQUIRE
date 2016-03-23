@@ -4,3 +4,4 @@ BinDeps
 @windows WinRPM
 Reactive
 SFML
+FunctionalCollections

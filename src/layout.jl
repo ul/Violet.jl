@@ -214,6 +214,58 @@ function get_relative_position(node, axis)
 end
 
 function layout_node_impl(node, parent_max_width, parent_max_height, parent_direction)
+  direction = resolve_direction(node, parent_direction)
+  main_axis = resolve_axis(get_flex_direction(node), direction)
+  cross_axis = get_cross_flex_direction(main_axis, direction)
+  resolved_row_axis = resolve_axis(CSS_FLEX_DIRECTION_ROW, direction)
+
+  # Handle width and height style attributes
+  set_dimension_from_style(node, main_axis)
+  set_dimension_from_style(node, cross_axis)
+
+  # Set the resolved resolution in the node's layout
+  node.layout[:direction] = direction
+
+  # The position is set by the parent, but we need to complete it with a
+  # delta composed of the margin and left/top/right/bottom
+  node.layout[leading[main_axis]] +=
+    get_leading_margin(node, main_axis) + get_relative_position(node, main_axis)
+  node.layout[trailing[main_axis]] +=
+    get_trailing_margin(node, main_axis) + get_relative_position(node, main_axis)
+  node.layout[leading[cross_axis]] +=
+    get_leading_margin(node, cross_axis) + get_relative_position(node, cross_axis)
+  node.layout[trailing[cross_axis]] +=
+    get_trailing_margin(node, cross_axis) + get_relative_position(node, cross_axis)
+
+  # Inline immutable values from the target node to avoid excessive method
+  # invocations during the layout calculation.
+  child_count = length(node.children)
+  padding_and_border_resolved_row = get_padding_and_border_axis(node, resolved_row_axis)
+  padding_and_border_axis_column = get_padding_and_border_axis(node, CSS_FLEX_DIRECTION_COLUMN)
+
+  if is_measure_defined(node)
+    is_resolved_row_dim_defined = is_layout_dim_defined(node, resolved_row_axis)
+
+    width = if is_style_dim_defined(node, resolved_row_axis)
+      node.style[:width]
+    elseif is_resolved_row_dim_defined
+      node.layout[dim[resolved_row_axis]]
+    else
+      parent_max_width - get_margin_axis(node, resolved_row_axis)
+    end
+
+    width -= padding_and_border_resolved_row
+
+    height = if is_style_dim_defined(node, CSS_FLEX_DIRECTION_COLUMN)
+      node.style[:height]
+    elseif is_layout_dim_defined(node, CSS_FLEX_DIRECTION_COLUMN)
+      node.layout[dim[CSS_FLEX_DIRECTION_COLUMN]]
+    else
+      parent_max_height - get_margin_axis(node, resolved_row_axis)
+    end
+    
+
+  end
 end
 
 end # module

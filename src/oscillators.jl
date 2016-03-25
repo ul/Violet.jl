@@ -113,3 +113,12 @@ saw(ν) = saw(ν, 0.0)
 end
 
 tri(ν) = tri(ν, 0.0)
+
+@audiosignal function square(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
+  @sample ν = fν(τ, ι)
+  @sample θ = fθ(τ, ι)
+  x = ν*τ
+  2floor(x) - floor(2x) + 1 |> Sample
+end
+
+square(ν) = square(ν, 0.0)

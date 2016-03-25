@@ -1,7 +1,5 @@
 # submodules
 export PortAudio
-export ECS
-export UI
 # types
 export Sample, Time, AudioChannel, AudioControl, AudioSignal
 export CircularBuffer

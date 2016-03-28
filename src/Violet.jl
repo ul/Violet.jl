@@ -13,10 +13,8 @@ using Violet.PortAudio
 Violet.PortAudio.initialize()
 atexit(Violet.PortAudio.terminate)
 
-include("ecs.jl")
-include("ui.jl")
+#include("ui.jl")
 
-include("control.jl")
 include("event.jl")
 include("node.jl")
 include("audio.jl")

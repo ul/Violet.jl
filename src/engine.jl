@@ -25,12 +25,12 @@ function Base.run(engine::Engine)
   end
   engine.status = :running
   stream = audiostream(engine.config)
-  buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
+  buffer = Array{Float32}(10engine.config.buffer_size, engine.config.output_channels)
   δframes = 0
   @async while true
     if engine.status == :running
       tic()
-      Δframes = min(engine.config.buffer_size, writeavailable(stream) + δframes)
+      Δframes = min(3engine.config.buffer_size, writeavailable(stream) + δframes)
       engine.eventlist(engine.frame + Δframes)
       engine.root(engine.frame, Δframes)
       @inbounds copy!(buffer, engine.root.buffer)

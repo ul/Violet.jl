@@ -1,25 +1,13 @@
 ### Utils ###
 
-macro sample(ex)
-  ex.head != :(=) &&
-    error("@sample works only with `x = f(τ, ι)` form, got ", ex)
-  x = gensym()
-  wrapper = quote
-    $x = $(ex.args[2])
-    isnull($x) && return Sample()
-    $(ex.args[1]) = get($x)
-  end
-  esc(wrapper)
-end
-
 function fop(op, f₁::AudioControl, f₂::AudioControl)
   isa(f₁, Float64) && isa(f₂, Float64) && return op(f₁, f₂)
   g₁ = convert(AudioSignal, f₁)
   g₂ = convert(AudioSignal, f₂)
-  function (τ::Time, ι::AudioChannel)
-    @sample x₁ = g₁(τ, ι)
-    @sample x₂ = g₂(τ, ι)
-    op(x₁, x₂) |> Sample
+  @inline function (τ::Time, ι::AudioChannel)
+    x₁ = g₁(τ, ι)
+    x₂ = g₂(τ, ι)
+    op(x₁, x₂)
   end
 end
 
@@ -27,17 +15,25 @@ Base.(:+)(f₁::AudioControl, f₂::AudioControl) = fop(+, f₁, f₂)
 Base.(:-)(f₁::AudioControl, f₂::AudioControl) = fop(-, f₁, f₂)
 Base.(:*)(f₁::AudioControl, f₂::AudioControl) = fop(*, f₁, f₂)
 Base.(:/)(f₁::AudioControl, f₂::AudioControl) = fop(/, f₁, f₂)
+Base.(:^)(f₁::AudioControl, f₂::AudioControl) = fop(^, f₁, f₂)
 
 function constantly(x)
-  s = Sample(x)
-  (τ::Time, ι::AudioChannel) -> s
+  @inline function (τ::Time, ι::AudioChannel)
+    x
+  end
 end
 
-signal(x::Signal{Float64}) =
-  (τ::Time, ι::AudioChannel) -> x |> value |> Sample
+function signal(x::Signal{Float64})
+  @inline function (τ::Time, ι::AudioChannel)
+    value(x)
+  end
+end
 
-signal(x::Signal{Array{Float64}}) =
-  (τ::Time, ι::AudioChannel) -> @inbounds x[ι] |> value |> Sample
+function signal(x::Signal{Array{Float64}})
+  @inline function (τ::Time, ι::AudioChannel)
+    @inbounds value(x[ι])
+  end
+end
 
 Base.convert(::Type{AudioSignal}, x::Signal{Float64}) = signal(x)
 Base.convert(::Type{AudioSignal}, x::Signal{Array{Float64}}) = signal(x)
@@ -89,36 +85,38 @@ end
 ### Waves ###
 
 @audiosignal function sine(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  @sample ν = fν(τ, ι)
-  @sample θ = fθ(τ, ι)
-  2.0muladd(ν, τ, θ) |> sinpi |> Sample
+  ν = fν(τ, ι)
+  θ = fθ(τ, ι)
+  sinpi(2.0muladd(ν, τ, θ))
 end
 
 sine(ν) = sine(ν, 0.0)
 
 @audiosignal function saw(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  @sample ν = fν(τ, ι)
-  @sample θ = fθ(τ, ι)
+  ν = fν(τ, ι)
+  θ = fθ(τ, ι)
   x = muladd(ν, τ, θ)
-  2(x - floor(x)) - 1 |> Sample
+  2.0(x - floor(x)) - 1.0
 end
 
 saw(ν) = saw(ν, 0.0)
 
 @audiosignal function tri(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  @sample ν = fν(τ, ι)
-  @sample θ = fθ(τ, ι)
+  ν = fν(τ, ι)
+  θ = fθ(τ, ι)
   x = 2.0muladd(ν, τ, θ)
-  4abs(x - floor(x + 0.5)) - 1 |> Sample
+  4.0abs(x - floor(x + 0.5)) - 1.0
 end
 
 tri(ν) = tri(ν, 0.0)
 
-@audiosignal function square(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  @sample ν = fν(τ, ι)
-  @sample θ = fθ(τ, ι)
-  x = ν*τ
-  2floor(x) - floor(2x) + 1 |> Sample
-end
+OVERTONE_STEP = sqrt(2)
 
-square(ν) = square(ν, 0.0)
+function overtones(f::Function, amps::Vector{AudioControl}, ν::AudioControl, θ::AudioControl)
+  fν = convert(AudioSignal, ν)
+  fθ = convert(AudioSignal, θ)
+  n = 0.5length(amps) |> ceil
+  mapreduce(+, enumerate(amps)) do ix
+    ix[2]*f(fν*OVERTONE_STEP^(ix[1] - n), fθ)
+  end
+end

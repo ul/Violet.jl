@@ -10,4 +10,5 @@ export Node
 export Swapper
 # functions & macros
 export env
-export sine, constantly, signal, saw, tri, @audiosignal, @sample
+export sine, constantly, signal, saw, tri, overtones
+export @audiosignal

@@ -1,4 +1,4 @@
-typealias Sample Nullable{Float64}
+typealias Sample Float64
 typealias Time Float64
 typealias AudioChannel Int
 typealias AudioSignal Function

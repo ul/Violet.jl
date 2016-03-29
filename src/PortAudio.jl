@@ -126,7 +126,7 @@ function Base.open(ID::PaDeviceIndex,
     stream = Pa_OpenDefaultStream(num_IO[1], num_IO[2], sample_format, sample_rate, buf_size)
   end
   play_buffer = CircularBuffer(sample_type, 10sample_rate)
-  tmp_buffer = zeros(sample_type, sample_rate)
+  tmp_buffer = zeros(sample_type, 10sample_rate)
   stream_wrapper = PaStreamWrapper(stream, ID, sample_rate, sample_format,
                                    sample_type, buf_size, num_IO[1], num_IO[2],
                                    play_buffer, tmp_buffer)
@@ -205,8 +205,13 @@ function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::
   tmp = stream_wrapper.tmp_buffer
   channels = stream_wrapper.num_outputs
 
-  interleave(buffer, tmp, channels, Nframes)
-  Pa_WriteStream(stream, tmp, Nframes)
+  #n = min(Pa_GetStreamWriteAvailable(stream), Nframes)
+  n = Nframes
+
+  interleave(buffer, tmp, channels, n)
+  Pa_WriteStream(stream, tmp, n)
+
+  return n
 
   #=towrite = Pa_GetStreamWriteAvailable(stream)
   while play.pushed > play.pulled
@@ -219,8 +224,6 @@ function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::
       sleep(0)
     end
   end=#
-
-  nothing
 end
 
 ############ Low-level wrappers for Portaudio function calls ############

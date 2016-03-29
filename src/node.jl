@@ -9,7 +9,7 @@ end
 
 Node(config=CONFIG) =
   Node(Set{AudioSignal}(), Set{Function}(), Set{Function}(), :ok, config,
-  zeros(Float64, (config.buffer_size, config.output_channels)))
+  zeros(Float64, (10config.buffer_size, config.output_channels)))
 
 # currently will continue rendering even if afs are empty. need to have
 # option to return nil when afs are empty, for the scenario of disk render.
@@ -31,12 +31,7 @@ function Base.call(node::Node, frame₀::Int, Δframes=node.config.buffer_size)
     end
 
     for f in node.audio
-      x = f(τ, ι)
-      if isnull(x)
-        delete!(node.functions, f)
-      else
-        @inbounds node.buffer[frame, ι] += get(x)
-      end
+      @inbounds node.buffer[frame, ι] += f(τ, ι)
     end
 
     if ι == 1

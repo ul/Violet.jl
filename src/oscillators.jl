@@ -110,14 +110,13 @@ end
 
 tri(ν) = tri(ν, 0.0)
 
-OVERTONE_STEP = sqrt(2)
-
 function overtones(f::Function, amps::Vector{AudioControl}, ν::AudioControl, θ::AudioControl)
   fν = convert(AudioSignal, ν)
   fθ = convert(AudioSignal, θ)
-  n = length(amps)÷2 + 1
+  n = round(Int, length(amps)/2)
   mapreduce(+, enumerate(amps)) do ix
-    ix[2]*f(fν*OVERTONE_STEP^(ix[1] - n), fθ)
+    k = ix[1] >= n ? ix[1] - n + 1.0 : 1.0 / (n - ix[1] + 1.0)
+    ix[2]*f(k*fν, fθ)
   end
 end
 

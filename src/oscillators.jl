@@ -115,8 +115,72 @@ OVERTONE_STEP = sqrt(2)
 function overtones(f::Function, amps::Vector{AudioControl}, ν::AudioControl, θ::AudioControl)
   fν = convert(AudioSignal, ν)
   fθ = convert(AudioSignal, θ)
-  n = 0.5length(amps) |> ceil
+  n = length(amps)÷2 + 1
   mapreduce(+, enumerate(amps)) do ix
     ix[2]*f(fν*OVERTONE_STEP^(ix[1] - n), fθ)
   end
 end
+
+# bloody battle for performance
+# sacrifice RAM, hail pure audiosignals!
+# speed of light is our limit
+
+wrap_index(i, n) = (i-1) % n + 1
+
+"NOTE table has a channel number as an outer index
+ REVIEW use this convention for buffers?"
+function wavetable(table, sample_rate=CONFIG.sample_rate)
+  n = size(table, 2)
+  function (τ::Time, ι::AudioChannel)
+    @inbounds x = table[ι, wrap_index(round(Int, τ*sample_rate) + 1, n)]
+    x
+  end
+end
+
+cosine_distance(x, y) = 1 - dot(x, y)/(norm(x)*norm(y))
+
+"NOTE table is flat here"
+function match_periods(table::Vector{Sample}, periods=2, ϵ=1e-3)
+  n = length(table)÷periods
+  x = sub(table, 1:n)
+  for i=1:periods - 1
+    y = sub(table, i*n + (1:n))
+    cosine_distance(x, y) > ϵ && return false
+  end
+  true
+end
+
+"NOTE `f` must be pure!
+ FIXME infinite loop is possible
+ `max_period` is in seconds
+ `periods` is how many periods to compare to be sure that we are not in a subperiod"
+function gen_table(f::AudioSignal, periods=2, config=CONFIG)
+  table = Sample[]
+  τ = 0.0
+  δτ = 1.0/config.sample_rate
+  for j=1:2
+    for i=1:periods
+      for ι=1:config.output_channels
+        push!(table, f(τ, ι))
+      end
+      τ += δτ
+    end
+  end
+  while !match_periods(table, periods)
+    for i=1:periods
+      for ι=1:config.output_channels
+        push!(table, f(τ, ι))
+      end
+      τ += δτ
+    end
+  end
+  n = length(table)÷periods
+  reshape(table[1:n], (config.output_channels, n÷config.output_channels))
+end
+
+function snapshot(f::AudioSignal, periods=2, config=CONFIG)
+  wavetable(gen_table(f::AudioSignal, periods, config))
+end
+
+# TODO optimize table generation
+# TODO caching impure audiosignals!

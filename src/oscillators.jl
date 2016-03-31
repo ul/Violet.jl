@@ -4,11 +4,12 @@ function fop(op, f₁::AudioControl, f₂::AudioControl)
   isa(f₁, Float64) && isa(f₂, Float64) && return op(f₁, f₂)
   g₁ = convert(AudioSignal, f₁)
   g₂ = convert(AudioSignal, f₂)
-  @inline function (τ::Time, ι::AudioChannel)
-    x₁ = g₁(τ, ι)
-    x₂ = g₂(τ, ι)
-    op(x₁, x₂)
+  function f(τ::Time, ι::AudioChannel)
+    x₁ = g₁(τ, ι)::Sample
+    x₂ = g₂(τ, ι)::Sample
+    op(x₁, x₂)::Sample
   end
+  f
 end
 
 Base.(:+)(f₁::AudioControl, f₂::AudioControl) = fop(+, f₁, f₂)
@@ -17,22 +18,25 @@ Base.(:*)(f₁::AudioControl, f₂::AudioControl) = fop(*, f₁, f₂)
 Base.(:/)(f₁::AudioControl, f₂::AudioControl) = fop(/, f₁, f₂)
 Base.(:^)(f₁::AudioControl, f₂::AudioControl) = fop(^, f₁, f₂)
 
-function constantly(x)
-  @inline function (τ::Time, ι::AudioChannel)
-    x
+function constantly(x::Sample)
+  function f(τ::Time, ι::AudioChannel)
+    x::Sample
   end
+  f
 end
 
 function signal(x::Signal{Float64})
-  @inline function (τ::Time, ι::AudioChannel)
-    value(x)
+  function f(τ::Time, ι::AudioChannel)
+    value(x)::Sample
   end
+  f
 end
 
 function signal(x::Signal{Array{Float64}})
-  @inline function (τ::Time, ι::AudioChannel)
-    @inbounds value(x[ι])
+  function f(τ::Time, ι::AudioChannel)
+    value(x[ι])::Sample
   end
+  f
 end
 
 Base.convert(::Type{AudioSignal}, x::Signal{Float64}) = signal(x)
@@ -73,7 +77,11 @@ macro audiosignal(ex)
 
     function $name($(wrapperargs...))
       $(conversions...)
-      ($τ, $ι) -> $body
+      function f($τ, $ι)
+        $body
+      end
+      precompile(f, (Time, AudioChannel))
+      f
     end
 
     precompile($name, $types)
@@ -85,16 +93,16 @@ end
 ### Waves ###
 
 @audiosignal function sine(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  θ = fθ(τ, ι)
+  ν = fν(τ, ι)::Sample
+  θ = fθ(τ, ι)::Sample
   sinpi(2.0muladd(ν, τ, θ))
 end
 
 sine(ν) = sine(ν, 0.0)
 
 @audiosignal function saw(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  θ = fθ(τ, ι)
+  ν = fν(τ, ι)::Sample
+  θ = fθ(τ, ι)::Sample
   x = muladd(ν, τ, θ)
   2.0(x - floor(x)) - 1.0
 end
@@ -102,8 +110,8 @@ end
 saw(ν) = saw(ν, 0.0)
 
 @audiosignal function tri(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)
-  θ = fθ(τ, ι)
+  ν = fν(τ, ι)::Sample
+  θ = fθ(τ, ι)::Sample
   x = 2.0muladd(ν, τ, θ)
   4.0abs(x - floor(x + 0.5)) - 1.0
 end
@@ -124,16 +132,13 @@ end
 # sacrifice RAM, hail pure audiosignals!
 # speed of light is our limit
 
-wrap_index(i, n) = (i-1) % n + 1
-
 "NOTE table has a channel number as an outer index
  REVIEW use this convention for buffers?"
-function wavetable(table, sample_rate=CONFIG.sample_rate)
-  n = size(table, 2)
-  function (τ::Time, ι::AudioChannel)
-    @inbounds x = table[ι, wrap_index(round(Int, τ*sample_rate) + 1, n)]
-    x
+function wavetable(table::Array{Sample}, sample_rate=CONFIG.sample_rate)
+  function f(τ::Time, ι::AudioChannel)
+    table[ι, mod1(round(Int, τ*sample_rate) + 1, size(table, 2))]::Sample
   end
+  f
 end
 
 cosine_distance(x, y) = 1 - dot(x, y)/(norm(x)*norm(y))
@@ -150,35 +155,36 @@ function match_periods(table::Vector{Sample}, periods=2, ϵ=1e-3)
 end
 
 "NOTE `f` must be pure!
- FIXME infinite loop is possible
- `max_period` is in seconds
+ `maxperiod` is in seconds,
+    care about size of resulting table: 1 second is 44100*2*8 ~ 689 KiB
+    table generation time is an issue too for long periods
  `periods` is how many periods to compare to be sure that we are not in a subperiod"
-function gen_table(f::AudioSignal, periods=2, config=CONFIG)
+function gen_table(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
+  maxlength = maxperiod*config.sample_rate*config.output_channels*periods
   table = Sample[]
-  τ = 0.0
-  δτ = 1.0/config.sample_rate
+  i = 0.0
   for j=1:2
-    for i=1:periods
+    for k=1:periods
       for ι=1:config.output_channels
-        push!(table, f(τ, ι))
+        push!(table, f(i/config.sample_rate, ι))
       end
-      τ += δτ
+      i += 1.0
     end
   end
-  while !match_periods(table, periods)
-    for i=1:periods
+  while length(table) <= maxlength && !match_periods(table, periods)
+    for k=1:periods
       for ι=1:config.output_channels
-        push!(table, f(τ, ι))
+        push!(table, f(i/config.sample_rate, ι))
       end
-      τ += δτ
+      i += 1.0
     end
   end
   n = length(table)÷periods
   reshape(table[1:n], (config.output_channels, n÷config.output_channels))
 end
 
-function snapshot(f::AudioSignal, periods=2, config=CONFIG)
-  wavetable(gen_table(f::AudioSignal, periods, config))
+function snapshot(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
+  wavetable(gen_table(f::AudioSignal, maxperiod, periods, config))
 end
 
 # TODO optimize table generation

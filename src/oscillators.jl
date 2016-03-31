@@ -144,7 +144,7 @@ end
 cosine_distance(x, y) = 1 - dot(x, y)/(norm(x)*norm(y))
 
 "NOTE table is flat here"
-function match_periods(table::Vector{Sample}, periods=2, ϵ=1e-3)
+function match_periods(table::Vector{Sample}, periods=2, ϵ=1e-6)
   n = length(table)÷periods
   x = sub(table, 1:n)
   for i=1:periods - 1

@@ -2,18 +2,29 @@ type Engine
   config::Config
   status::Symbol
   empty::Bool
-  root::Node
+  graph::Graph
+  monomixer::Node
+  stereomixer::Node
   eventlist::EventList
   port::Int
   frame::Int
 end
 
 function Engine(port=31337, config=CONFIG)
+  graph = Graph()
+  monomixer = mixer(1)
+  stereomixer = mixer(2)
+  dub = stereo(2)
+  push!(graph, monomixer, 1, dub, 1)
+  push!(graph, dub, 1, stereomixer, 1)
+  push!(graph, dub, 2, stereomixer, 2)
   Engine(
     config,
     :stopped,
     false,
-    Node(config),
+    graph,
+    monomixer,
+    stereomixer,
     EventList(config),
     port,
     0)
@@ -27,13 +38,24 @@ function Base.run(engine::Engine)
   stream = audiostream(engine.config)
   buffer = Array{Float32}(10engine.config.buffer_size, engine.config.output_channels)
   δframes = 0
+  Δτ = 1/engine.config.sample_rate
   @async while true
     if engine.status == :running
       tic()
       Δframes = min(3engine.config.buffer_size, writeavailable(stream) + δframes)
       engine.eventlist(engine.frame + Δframes)
-      engine.root(engine.frame, Δframes)
-      @inbounds copy!(buffer, engine.root.buffer)
+
+      ###
+      for frame=1:Δframes
+        τ = (engine.frame + frame)*Δτ
+        run(engine.graph, τ)
+        for ι=1:engine.config.output_channels
+          @inbounds buffer[frame, ι] = engine.stereomixer.y[ι]
+        end
+      end
+      ###
+
+
       if engine.empty
         empty!(engine.root)
         empty!(engine.eventlist)

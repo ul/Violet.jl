@@ -1,4 +1,4 @@
-type Swapper
+#=type Swapper
   engine::Engine
   f::AudioSignal
 end
@@ -15,4 +15,4 @@ end
 
 function Base.kill(s::Swapper)
   delete!(s.engine.root.audio, s.f)
-end
+end=#

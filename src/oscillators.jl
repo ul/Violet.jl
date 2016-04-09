@@ -1,122 +1,112 @@
-### Utils ###
+@inline function mixer_kernel(_::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds copy!(y, x)
+end
 
-function fop(op, f₁::AudioControl, f₂::AudioControl)
-  isa(f₁, Float64) && isa(f₂, Float64) && return op(f₁, f₂)
-  g₁ = convert(AudioSignal, f₁)
-  g₂ = convert(AudioSignal, f₂)
-  function f(τ::Time, ι::AudioChannel)
-    x₁ = g₁(τ, ι)::Sample
-    x₂ = g₂(τ, ι)::Sample
-    op(x₁, x₂)::Sample
+mixer(channels::Int) = Node(mixer_kernel, fill(Sample, channels), fill(Sample, channels))
+
+@inline function stereo_kernel(_::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds begin
+    fill!(y, x[1])
   end
-  f
 end
 
-Base.(:+)(f₁::AudioControl, f₂::AudioControl) = fop(+, f₁, f₂)
-Base.(:-)(f₁::AudioControl, f₂::AudioControl) = fop(-, f₁, f₂)
-Base.(:*)(f₁::AudioControl, f₂::AudioControl) = fop(*, f₁, f₂)
-Base.(:/)(f₁::AudioControl, f₂::AudioControl) = fop(/, f₁, f₂)
-Base.(:^)(f₁::AudioControl, f₂::AudioControl) = fop(^, f₁, f₂)
+stereo(channels::Int) = Node(stereo_kernel, [Sample], fill(Sample, channels))
 
-function constantly(x::Sample)
-  function f(τ::Time, ι::AudioChannel)
-    x::Sample
+function constant{T}(x::T)
+  @inline function constant_kernel(_::Time, __, y::Vector{T})
+    @inbounds y[1] = x
   end
-  f
+  Node(constant_kernel, [], [T])
 end
 
-function signal(x::Signal{Float64})
-  function f(τ::Time, ι::AudioChannel)
-    value(x)::Sample
+function signal{T}(x::Signal{T})
+  @inline function signal_kernel(_::Time, __, y::Vector{T})
+    @inbounds y[1] = value(x)
   end
-  f
+  Node(signal_kernel, [], [T])
 end
 
-function signal(x::Signal{Array{Float64}})
-  function f(τ::Time, ι::AudioChannel)
-    value(x[ι])::Sample
+@inline function sine_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds begin
+    ν = x[1]
+    θ = x[2]
+    y[1] = sinpi(2.0muladd(ν, τ, θ))
   end
-  f
 end
 
-Base.convert(::Type{AudioSignal}, x::Signal{Float64}) = signal(x)
-Base.convert(::Type{AudioSignal}, x::Signal{Array{Float64}}) = signal(x)
-Base.convert(::Type{AudioSignal}, x::Float64) = constantly(x)
+sine() = Node(sine_kernel, [Sample, Sample], [Sample])
 
-macro audiosignal(ex)
-  ex.head != :function &&
-    error("@audiosignal works only with `function myfunc(...)` form, got ", ex)
-
-  signature = ex.args[1].args
-  name = signature[1]
-  body = ex.args[2]
-
-  τ = signature[end - 1] # τ::Time
-  ι = signature[end]     # ι::AudioChannel
-
-  # e.g. AudioSignal, AudioSignal, Time, AudioChannel
-  _types = map((x) -> x.args[2], signature[2:end])
-  types = Expr(:tuple, _types...)
-
-  # e.g. fν::AudioSignal, fθ::AudioSignal
-  bindargs = signature[2:end-2]
-
-  # e.g. fν::AudioControl, fθ::AudioControl
-  wrapperargs = map(bindargs) do arg
-    Expr(arg.head, arg.args[1], :AudioControl)
+@inline function saw_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds begin
+    ν = x[1]
+    θ = x[2]
+    z = muladd(ν, τ, θ)
+    y[1] = 2.0(z - floor(z)) - 1.0
   end
+end
 
-  conversions = map(bindargs) do arg
-    # e.g. convert(AudioSignal, fν)
-    x = arg.args[1]
-    :($x = convert(AudioSignal, $x))
+saw() = Node(saw_kernel, [Sample, Sample], [Sample])
+
+@inline function tri_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds begin
+    ν = x[1]
+    θ = x[2]
+    z = 2.0muladd(ν, τ, θ)
+    y[1] = 4.0abs(z - floor(z + 0.5)) - 1.0
   end
+end
 
-  wrapper = quote
-    $ex
+tri() = Node(tri_kernel, [Sample, Sample], [Sample])
 
-    function $name($(wrapperargs...))
-      $(conversions...)
-      function f($τ, $ι)
-        $body
-      end
-      precompile(f, (Time, AudioChannel))
-      f
-    end
-
-    precompile($name, $types)
+@inline function square_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds begin
+    ν = x[1]
+    θ = x[2]
+    z = ν*τ
+    y[1] = 2.0floor(z) - floor(2.0z) + 1.0
   end
-
-  esc(wrapper)
 end
 
-### Waves ###
+square() = Node(square_kernel, [Sample, Sample], [Sample])
 
-@audiosignal function sine(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)::Sample
-  θ = fθ(τ, ι)::Sample
-  sinpi(2.0muladd(ν, τ, θ))
+@inline function sum_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds y[1] = sum(x)
 end
 
-sine(ν) = sine(ν, 0.0)
+sum(channels::Int) = Node(sum_kernel, fill(Sample, channels), [Sample])
 
-@audiosignal function saw(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)::Sample
-  θ = fθ(τ, ι)::Sample
-  x = muladd(ν, τ, θ)
-  2.0(x - floor(x)) - 1.0
+@inline function mul_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds y[1] = prod(x)
 end
 
-saw(ν) = saw(ν, 0.0)
+mul(channels::Int) = Node(mul_kernel, fill(Sample, channels), [Sample])
 
-@audiosignal function tri(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
-  ν = fν(τ, ι)::Sample
-  θ = fθ(τ, ι)::Sample
-  x = 2.0muladd(ν, τ, θ)
-  4.0abs(x - floor(x + 0.5)) - 1.0
+@inline function sub_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds y[1] = reduce(-, x)
 end
 
-tri(ν) = tri(ν, 0.0)
+sub(channels::Int) = Node(sub_kernel, fill(Sample, channels), [Sample])
+
+@inline function div_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds y[1] = reduce(/, x)
+end
+
+div(channels::Int) = Node(div_kernel, fill(Sample, channels), [Sample])
+
+@inline function pow_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+  @inbounds y[1] = reduce(^, x)
+end
+
+pow(channels::Int) = Node(pow_kernel, fill(Sample, channels), [Sample])
+
+
+### FIXME not ported yet
+#=
+function overtones(n)
+  function overtones_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
+
+  end
+end
 
 function overtones(f::Function, amps::Vector{AudioControl}, ν::AudioControl, θ::AudioControl)
   fν = convert(AudioSignal, ν)
@@ -154,13 +144,18 @@ function match_periods(table::Vector{Sample}, periods=2, ϵ=1e-6)
   true
 end
 
+FFTW.set_num_threads(4)
+
+using DSP
+
 "NOTE `f` must be pure!
  `maxperiod` is in seconds,
     care about size of resulting table: 1 second is 44100*2*8 ~ 689 KiB
     table generation time is an issue too for long periods
  `periods` is how many periods to compare to be sure that we are not in a subperiod"
-function gen_table(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
+function gen_table(f::AudioSignal, ms=16, maxperiod=10.0, periods=2, config=CONFIG)
   maxlength = maxperiod*config.sample_rate*config.output_channels*periods
+  matchstep = ms
   table = Sample[]
   i = 0.0
   for j=1:2
@@ -171,7 +166,15 @@ function gen_table(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
       i += 1.0
     end
   end
-  while length(table) <= maxlength && !match_periods(table, periods)
+  z = 0
+  while length(table) <= maxlength
+    if (matchstep == 1 || i%(periods*matchstep) == 0)
+      z += 1
+      if match_periods(table, periods, exp10(matchstep)*1e-7)
+        matchstep == 1 && break
+        matchstep -= 1
+      end
+    end
     for k=1:periods
       for ι=1:config.output_channels
         push!(table, f(i/config.sample_rate, ι))
@@ -179,13 +182,15 @@ function gen_table(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
       i += 1.0
     end
   end
+  println(z)
   n = length(table)÷periods
   reshape(table[1:n], (config.output_channels, n÷config.output_channels))
 end
 
 function snapshot(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
-  wavetable(gen_table(f::AudioSignal, maxperiod, periods, config))
+  wavetable(gen_table(f::AudioSignal, 1, maxperiod, periods, config))
 end
 
 # TODO optimize table generation
 # TODO caching impure audiosignals!
+=#

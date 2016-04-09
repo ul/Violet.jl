@@ -4,6 +4,7 @@ using Reactive
 
 include("types.jl")
 include("utils.jl")
+include("ipq.jl")
 
 include("config.jl")
 
@@ -16,7 +17,7 @@ atexit(Violet.PortAudio.terminate)
 #include("ui.jl")
 
 include("event.jl")
-include("node.jl")
+include("flow.jl")
 include("audio.jl")
 include("engine.jl")
 include("oscillators.jl")

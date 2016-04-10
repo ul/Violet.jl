@@ -49,3 +49,22 @@ function Base.delete!{T}(pq::IntPriorityQueue{T}, key::T)
   end
   pq
 end
+
+Base.start(pq::IntPriorityQueue) = (start(pq.index), 0, 0)
+
+Base.done(pq::IntPriorityQueue, s) =
+  done(pq.index, s[1]) && (s[2] === 0 || done(pq.p[s[2]], s[3]))
+
+function Base.next(pq::IntPriorityQueue, s)
+  index, p, set = s
+  if set === 0 || done(pq.p[p], set)
+    p, index = next(pq.index, index)
+    set = start(pq.p[p])
+  end
+  x, set = next(pq.p[p], set)
+  x, (index, p, set)
+end
+
+@inline function Base.length(pq::IntPriorityQueue)
+  length(pq.xs)
+end

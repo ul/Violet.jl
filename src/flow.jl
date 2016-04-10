@@ -100,8 +100,7 @@ function Base.delete!(graph::Graph, source::Node, output::Port, sink::Node, inpu
 end
 
 function Base.run(graph::Graph, τ::Time)
-  ks = graph.ranks.index
-  for k in ks, source in graph.ranks.p[k]
+  for source in graph.ranks
     source(τ)
     !haskey(graph.sinks, source) && continue
     @inbounds for sink in keys(graph.sinks[source]),

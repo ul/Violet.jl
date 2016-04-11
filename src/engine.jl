@@ -3,8 +3,8 @@ type Engine
   status::Symbol
   empty::Bool
   graph::Graph
-  monomixer::Node
-  stereomixer::Node
+  monomixer::MonoMixer
+  stereomixer::StereoMixer
   eventlist::EventList
   port::Int
   frame::Int
@@ -12,12 +12,10 @@ end
 
 function Engine(port=31337, config=CONFIG)
   graph = Graph()
-  monomixer = mixer(1)
-  stereomixer = mixer(2)
-  dub = stereo(2)
-  push!(graph, monomixer, 1, dub, 1)
-  push!(graph, dub, 1, stereomixer, 1)
-  push!(graph, dub, 2, stereomixer, 2)
+  monomixer = MonoMixer()
+  stereomixer = StereoMixer()
+  push!(graph, monomixer, :out, stereomixer, :leftin)
+  push!(graph, monomixer, :out, stereomixer, :rightin)
   Engine(
     config,
     :stopped,
@@ -49,9 +47,13 @@ function Base.run(engine::Engine)
       for frame=1:Δframes
         τ = (engine.frame + frame)*Δτ
         run(engine.graph, τ)
-        for ι=1:engine.config.output_channels
-          @inbounds buffer[frame, ι] = engine.stereomixer.y[ι]
+        @inbounds begin
+          buffer[frame, 1] = engine.stereomixer.leftout
+          buffer[frame, 2] = engine.stereomixer.rightout
         end
+        #for ι=1:engine.config.output_channels
+        #  @inbounds buffer[frame, ι] = engine.stereomixer.y[ι]
+        #end
       end
       ###
 

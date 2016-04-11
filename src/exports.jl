@@ -10,4 +10,4 @@ export Graph, Node
 export Swapper
 # functions & macros
 export env
-export sine, constant, signal, saw, tri, square, overtones, wavetable, snapshot
+export Sine, Constant, RSignal, Saw, Tri, Square, Overtones, Wavetable, Snapshot

@@ -21,7 +21,7 @@ function Base.setindex!{T}(pq::IntPriorityQueue{T}, value::Int, key::T)
   if haskey(pq.p, value)
     push!(pq.p[value], key)
   else
-    pq.p[value] = Set([key])
+    pq.p[value] = Set{T}([key])
     push!(pq.index, value)
   end
   value

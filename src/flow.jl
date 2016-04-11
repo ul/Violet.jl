@@ -4,41 +4,26 @@
 # TODO use GPU for number crunching nodes
 # TODO tests
 
-typealias Port Int
+abstract Node
+typealias NodeType{T<:Node} Type{T}
 
-type Node
-  f::Function # (τ::Time, y::Vector, x...)
-  Tx::Vector{Type}
-  Ty::Vector{Type}
-  x::Vector
-  y::Vector
-  x₀::Vector
-  function Node(f, Tx, Ty)
-    x₀ = map(zero, Tx)
-    y = map(zero, Ty)
-    new(f, Tx, Ty, copy(x₀), y, x₀)
-  end
-end
-
-function Base.call(node::Node, τ::Time)
-  node.f(τ, node.x, node.y)
-  copy!(node.x, node.x₀)
-end
-
+typealias Port Symbol
 typealias ConnectedPorts Set{Port}
 typealias PortConnections Dict{Port, ConnectedPorts}
 typealias NodeConnections Dict{Node, PortConnections}
 typealias Connections Dict{Node, NodeConnections}
-
-typealias Ranks IntPriorityQueue{Node}
+typealias Ranks IntPriorityQueue{Any} # NodeType
+typealias Cache Vector{Tuple{Node, Node, Port, Port}}
 
 type Graph
   sinks::Connections
   sources::Connections
   ranks::Ranks
+  cache::Cache
+  eff::Vector{Node}
 end
 
-Graph() = Graph(Connections(), Connections(), Ranks())
+Graph() = Graph(Connections(), Connections(), Ranks(), Cache(), Node[])
 
 function update_ranks(graph::Graph, node::Node)
   rank = 0
@@ -73,15 +58,37 @@ function Base.delete!(c::Connections, src::Node, dest::Node, from::Port, to::Por
   c
 end
 
-function Base.push!(graph::Graph, source::Node, output::Port, sink::Node, input::Port)
-  @assert source.Ty[output] <: sink.Tx[input]
+function rebuild_cache(graph::Graph)
+  empty!(graph.cache)
+  empty!(graph.eff)
+  for i in graph.ranks.index, source in graph.ranks.p[i]
+    if !haskey(graph.sinks, source)
+      push!(graph.eff, source)
+      continue
+    end
+    for sink in keys(graph.sinks[source]),
+        output in keys(graph.sinks[source][sink]),
+        input in graph.sinks[source][sink][output]
+      push!(graph.cache, (source, sink, output, input))
+    end
+  end
+end
+
+# FIXME batch ranking & cache building
+
+function Base.push!(graph::Graph, source::Node, output::Port, sink::Node, input=:in)
+  @assert fieldtype(typeof(source), output) <: fieldtype(typeof(sink), input)
   push!(graph.sinks, source, sink, output, input)
   push!(graph.sources, sink, source, input, output)
   !haskey(graph.ranks, source) && (graph.ranks[source] = 1)
   !haskey(graph.ranks, sink) && (graph.ranks[sink] = 2)
   update_ranks(graph, sink)
+  rebuild_cache(graph)
   graph
 end
+
+Base.push!(graph::Graph, source::Node, sink::Node, input=:in) =
+  push!(graph, source, :out, sink, input)
 
 function clean_ranks(graph::Graph)
   for node in setdiff(keys(graph.ranks), union(keys(graph.sinks), keys(graph.sources)))
@@ -89,24 +96,44 @@ function clean_ranks(graph::Graph)
   end
 end
 
-function Base.delete!(graph::Graph, source::Node, output::Port, sink::Node, input::Port)
+function Base.delete!(graph::Graph, source::Node, output::Port, sink::Node, input=:in)
   delete!(graph.sinks, source, sink, output, input)
   delete!(graph.sources, sink, source, input, output)
   if !haskey(graph.sources, sink) || !haskey(graph.sinks, source)
     clean_ranks(graph)
   end
   haskey(graph.ranks, sink) && update_ranks(graph, sink)
+  rebuild_cache(graph)
   graph
 end
 
+Base.delete!(graph::Graph, source::Node, sink::Node, input=:in) =
+  delete!(graph, source, :out, sink, input)
+
+@inline function setport!(node::Node, port::Port, x)
+  setfield!(node, port, x)
+end
+
+@inline function getport(node::Node, port::Port)
+  getfield(node, port)
+end
+
+type Dummy <: Node
+end
+
+DUMMY = Dummy()
+
 function Base.run(graph::Graph, τ::Time)
-  for source in graph.ranks
-    source(τ)
-    !haskey(graph.sinks, source) && continue
-    @inbounds for sink in keys(graph.sinks[source]),
-        output in keys(graph.sinks[source][sink]),
-        input in graph.sinks[source][sink][output]
-      sink.x[input] += source.y[output]
+  src = DUMMY
+  for (source, sink, output, input) in graph.cache
+    if source !== src
+      run(source, τ)
+      src = source
     end
+    setport!(sink, input, getport(source, output))
   end
+  for eff in graph.eff
+    run(eff, τ)
+  end
+  nothing
 end

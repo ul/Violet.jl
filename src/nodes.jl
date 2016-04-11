@@ -1,104 +1,107 @@
-@inline function mixer_kernel(_::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds copy!(y, x)
+import Base.run
+
+abstract Mixer <: Node
+
+@inline function setport!(node::Mixer, port::Port, x::Sample)
+  node.(port) += x
 end
 
-mixer(channels::Int) = Node(mixer_kernel, fill(Sample, channels), fill(Sample, channels))
+type MonoMixer <: Mixer
+  in::Sample
+  out::Sample
+end
 
-@inline function stereo_kernel(_::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds begin
-    fill!(y, x[1])
+MonoMixer() = MonoMixer(0.0, 0.0)
+
+type StereoMixer <: Mixer
+  leftin::Sample
+  rightin::Sample
+  leftout::Sample
+  rightout::Sample
+end
+
+StereoMixer() = StereoMixer(0.0, 0.0, 0.0, 0.0)
+
+@inline function run(node::MonoMixer, τ::Time)
+  node.out = node.in
+  node.in = 0.0
+end
+
+@inline function run(node::StereoMixer, τ::Time)
+  node.leftout = node.leftin
+  node.rightout = node.rightin
+  node.leftin = node.rightin = 0.0
+end
+
+type Constant{T} <: Node
+  out::T
+end
+
+@inline function run(node::Constant, τ::Time)
+end
+
+type RSignal{T} <: Node
+  signal::T
+  out::T
+  function RSignal(signal::Signal)
+    new(signal, value(signal))
   end
 end
 
-stereo(channels::Int) = Node(stereo_kernel, [Sample], fill(Sample, channels))
-
-function constant{T}(x::T)
-  @inline function constant_kernel(_::Time, __, y::Vector{T})
-    @inbounds y[1] = x
-  end
-  Node(constant_kernel, [], [T])
+@inline function run(node::RSignal, τ::Time)
+  node.out = value(node.signal)
 end
 
-function signal{T}(x::Signal{T})
-  @inline function signal_kernel(_::Time, __, y::Vector{T})
-    @inbounds y[1] = value(x)
-  end
-  Node(signal_kernel, [], [T])
+type Sine <: Node
+  ν::Sample
+  θ::Sample
+  out::Sample
 end
 
-@inline function sine_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds begin
-    ν = x[1]
-    θ = x[2]
-    y[1] = sinpi(2.0muladd(ν, τ, θ))
-  end
+Sine(ν=0.0, θ=0.0) = Sine(ν, θ, 0.0)
+
+@inline function run(node::Sine, τ::Time)
+  node.out = sinpi(2.0muladd(node.ν, τ, node.θ))
 end
 
-sine() = Node(sine_kernel, [Sample, Sample], [Sample])
-
-@inline function saw_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds begin
-    ν = x[1]
-    θ = x[2]
-    z = muladd(ν, τ, θ)
-    y[1] = 2.0(z - floor(z)) - 1.0
-  end
+type Saw <: Node
+  ν::Sample
+  θ::Sample
+  out::Sample
 end
 
-saw() = Node(saw_kernel, [Sample, Sample], [Sample])
+Saw(ν=0.0, θ=0.0) = Saw(ν, θ, 0.0)
 
-@inline function tri_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds begin
-    ν = x[1]
-    θ = x[2]
-    z = 2.0muladd(ν, τ, θ)
-    y[1] = 4.0abs(z - floor(z + 0.5)) - 1.0
-  end
+@inline function run(node::Saw, τ::Time)
+  x = muladd(node.ν, τ, node.θ)
+  node.out = 2.0(x - floor(x)) - 1.0
 end
 
-tri() = Node(tri_kernel, [Sample, Sample], [Sample])
-
-@inline function square_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds begin
-    ν = x[1]
-    θ = x[2]
-    z = ν*τ
-    y[1] = 2.0floor(z) - floor(2.0z) + 1.0
-  end
+type Tri <: Node
+  ν::Sample
+  θ::Sample
+  out::Sample
 end
 
-square() = Node(square_kernel, [Sample, Sample], [Sample])
+Tri(ν=0.0, θ=0.0) = Tri(ν, θ, 0.0)
 
-@inline function sum_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds y[1] = sum(x)
+@inline function run(node::Tri, τ::Time)
+  x = 2.0muladd(node.ν, τ, node.θ)
+  node.out = 4.0abs(x - floor(x + 0.5)) - 1.0
 end
 
-sum(channels::Int) = Node(sum_kernel, fill(Sample, channels), [Sample])
-
-@inline function mul_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds y[1] = prod(x)
+type Square <: Node
+  ν::Sample
+  θ::Sample
+  out::Sample
 end
 
-mul(channels::Int) = Node(mul_kernel, fill(Sample, channels), [Sample])
+Square(ν=0.0, θ=0.0) = Square(ν, θ, 0.0)
 
-@inline function sub_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds y[1] = reduce(-, x)
+@inline function run(node::Square, τ::Time)
+  x = node.ν*node.θ
+  node.out = 2.0floor(x) - floor(2.0x) + 1.0
 end
-
-sub(channels::Int) = Node(sub_kernel, fill(Sample, channels), [Sample])
-
-@inline function div_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds y[1] = reduce(/, x)
-end
-
-div(channels::Int) = Node(div_kernel, fill(Sample, channels), [Sample])
-
-@inline function pow_kernel(τ::Time, x::Vector{Sample}, y::Vector{Sample})
-  @inbounds y[1] = reduce(^, x)
-end
-
-pow(channels::Int) = Node(pow_kernel, fill(Sample, channels), [Sample])
-
 
 ### FIXME not ported yet
 #=

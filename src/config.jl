@@ -1,8 +1,8 @@
 immutable Config
-  sample_rate::Int
-  buffer_size::Int
-  input_channels::Int
-  output_channels::Int
+  samplerate::Int
+  buffersize::Int
+  inchannels::Int
+  outchannels::Int
   tempo::Float64
 end
 

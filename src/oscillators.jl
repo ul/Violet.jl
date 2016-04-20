@@ -144,9 +144,9 @@ end
 
 "NOTE table has a channel number as an outer index
  REVIEW use this convention for buffers?"
-function wavetable(table::Array{Sample}, sample_rate=CONFIG.sample_rate)
+function wavetable(table::Array{Sample}, samplerate=CONFIG.samplerate)
   function f(τ::Time, ι::AudioChannel)
-    table[ι, mod1(round(Int, τ*sample_rate) + 1, size(table, 2))]::Sample
+    table[ι, mod1(round(Int, τ*samplerate) + 1, size(table, 2))]::Sample
   end
   f
 end
@@ -170,27 +170,27 @@ end
     table generation time is an issue too for long periods
  `periods` is how many periods to compare to be sure that we are not in a subperiod"
 function gen_table(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)
-  maxlength = maxperiod*config.sample_rate*config.output_channels*periods
+  maxlength = maxperiod*config.samplerate*config.outchannels*periods
   table = Sample[]
   i = 0.0
   for j=1:2
     for k=1:periods
-      for ι=1:config.output_channels
-        push!(table, f(i/config.sample_rate, ι))
+      for ι=1:config.outchannels
+        push!(table, f(i/config.samplerate, ι))
       end
       i += 1.0
     end
   end
   while length(table) <= maxlength && !match_periods(table, periods)
     for k=1:periods
-      for ι=1:config.output_channels
-        push!(table, f(i/config.sample_rate, ι))
+      for ι=1:config.outchannels
+        push!(table, f(i/config.samplerate, ι))
       end
       i += 1.0
     end
   end
   n = length(table)÷periods
-  reshape(table[1:n], (config.output_channels, n÷config.output_channels))
+  reshape(table[1:n], (config.outchannels, n÷config.outchannels))
 end
 
 function snapshot(f::AudioSignal, maxperiod=1.0, periods=2, config=CONFIG)

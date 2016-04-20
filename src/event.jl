@@ -74,7 +74,7 @@ beats_to_seconds(beats, tempo) = beats * 60 / tempo
 
 function Base.call(eventlist::EventList, endframe::Int)
   merge_pending!(eventlist)
-  beat = seconds_to_beats(endframe/eventlist.config.sample_rate, eventlist.config.tempo)
+  beat = seconds_to_beats(endframe/eventlist.config.samplerate, eventlist.config.tempo)
   while length(eventlist.events) > 0 && peek(eventlist.events)[2] < beat
     fire_event(dequeue!(eventlist.events))
   end

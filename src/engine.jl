@@ -25,9 +25,9 @@ function Base.run(engine::Engine)
   end
   engine.status = :running
   stream = convert(IO, connect(31337))
-  buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
-  Δframes = engine.config.buffer_size
-  sr = engine.config.sample_rate
+  buffer = Array{Float32}(engine.config.buffersize, engine.config.outchannels)
+  Δframes = engine.config.buffersize
+  sr = engine.config.samplerate
   δτ = 0.0
   τ₀ = time()
   @async while true

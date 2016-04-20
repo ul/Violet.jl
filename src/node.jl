@@ -9,17 +9,17 @@ end
 
 Node(config=CONFIG) =
   Node(Set{AudioSignal}(), Set{Function}(), Set{Function}(), :ok, config,
-  zeros(Float64, (config.buffer_size, config.output_channels)))
+  zeros(Float64, (config.buffersize, config.outchannels)))
 
 # currently will continue rendering even if afs are empty. need to have
 # option to return nil when afs are empty, for the scenario of disk render.
 # should add a *disk-render* flag to config and a default option here
 # so that user can override behavior.
-function Base.call(node::Node, frame₀::Int, Δframes=node.config.buffer_size)
+function Base.call(node::Node, frame₀::Int, Δframes=node.config.buffersize)
   fill!(node.buffer, 0.0)
-  Δτ = 1/node.config.sample_rate
+  Δτ = 1/node.config.samplerate
 
-  for ι=1:node.config.output_channels, frame=1:Δframes
+  for ι=1:node.config.outchannels, frame=1:Δframes
     τ = (frame₀ + frame)*Δτ
 
     if ι == 1

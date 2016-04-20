@@ -5,15 +5,10 @@ using PortAudio
 
 function audiostream(config=CONFIG)
   devID = convert(PaDeviceIndex, -1)
-  audiostream = open(devID, (config.input_channels, config.output_channels),
-    config.sample_rate, config.buffer_size)
-  start_stream(audiostream)
+  audiostream = open(devID, (config.inchannels, config.outchannels),
+    config.samplerate, config.buffersize)
+  run(audiostream)
   audiostream
-end
-
-function Base.kill(audiostream::PaStreamWrapper)
-  stop_stream(audiostream)
-  close(audiostream)
 end
 
 PortAudio.initialize()
@@ -22,6 +17,7 @@ stream = audiostream()
 
 function clean()
   kill(stream)
+  close(stream)
   PortAudio.terminate()
 end
 

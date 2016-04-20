@@ -210,7 +210,7 @@ function Base.flush(stream_wrapper::PaStreamWrapper)
   towrite = Pa_GetStreamWriteAvailable(stream)
   towrite <= 0 && return
   n = channels*towrite
-  if play.pulled + n <= play.pushed
+  if play.read + n <= play.write
     unsafe_copy!(tmp, play, n)
   else
     fill!(tmp, 0.0)

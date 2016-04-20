@@ -25,6 +25,8 @@ function constantly(x::Sample)
   f
 end
 
+silence = constantly(0.0)
+
 function signal(x::Signal{Float64})
   function f(τ::Time, ι::AudioChannel)
     value(x)::Sample

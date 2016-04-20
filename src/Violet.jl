@@ -10,10 +10,9 @@ include("config.jl")
 #include("ui.jl")
 
 include("event.jl")
-include("node.jl")
 #include("audio.jl")
-include("engine.jl")
 include("oscillators.jl")
+include("engine.jl")
 include("envelopes.jl")
 include("swapper.jl")
 

@@ -2,12 +2,15 @@ using Violet
 
 engine = Engine()
 
+prev = silence
+
 function addgen(engine, gen)
-  push!(engine.root.audio, gen)
+  global prev = engine.dsp
+  engine.dsp = gen
 end
 
 function delgen(engine, gen)
-  delete!(engine.root.audio, gen)
+  engine.dsp = prev
 end
 
 function snote(freq::Float64, dur::Float64, start::Float64, engine::Engine)
@@ -35,7 +38,7 @@ f = overtones(sine, amps, ff(110.0, sine(13.0)), 0.0)
 
 f = overtones(sine, AudioControl[0.3, 0.5, 0.2], sine(110.0)+1.0, 0.0)
 
-push!(engine.root.audio, f)
+engine.dsp = f
 
 run(engine)
 
@@ -45,6 +48,6 @@ run(engine)
 #engine.eventlist.current_beat
 
 sleep(60)
-delete!(engine.root.audio, f)
+engine.dsp = silence
 kill(engine)
 sleep(2) # give time for async print to finish it's job

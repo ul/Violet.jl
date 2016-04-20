@@ -4,9 +4,10 @@ immutable Config
   inchannels::Int
   outchannels::Int
   tempo::Float64
+  port::Int
 end
 
-Config() = Config(44100, 1024, 0, 2, 60.0)
+Config() = Config(44100, 1024, 0, 2, 60.0, 31337)
 
 "Default config"
 CONFIG = Config()

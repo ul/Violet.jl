@@ -12,7 +12,7 @@ function audiostream(config=CONFIG)
 end
 
 PortAudio.initialize()
-server = listen(31337)
+server = listen(CONFIG.port)
 stream = audiostream()
 
 function clean()

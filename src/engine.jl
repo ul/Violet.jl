@@ -2,20 +2,18 @@ type Engine
   config::Config
   status::Symbol
   empty::Bool
-  root::Node
+  dsp::AudioSignal
   eventlist::EventList
-  port::Int
   frame::Int
 end
 
-function Engine(port=31337, config=CONFIG)
+function Engine(config=CONFIG)
   Engine(
     config,
     :stopped,
     false,
-    Node(config),
+    silence,
     EventList(config),
-    port,
     0)
 end
 
@@ -24,25 +22,26 @@ function Base.run(engine::Engine)
     return
   end
   engine.status = :running
-  stream = convert(IO, connect(31337))
-  buffer = Array{Float32}(engine.config.buffersize, engine.config.outchannels)
-  Δframes = engine.config.buffersize
-  sr = engine.config.samplerate
-  δτ = 0.0
+  config = engine.config
+  stream = convert(IO, connect(config.port))
+  buffer = Array{Float32}(config.buffersize, config.outchannels)
+  Δframes = config.buffersize
+  Δτ = 1/config.samplerate
   τ₀ = time()
   @async while true
     if engine.status == :running
       endframe = engine.frame + Δframes
       engine.eventlist(endframe)
-      engine.root(engine.frame, Δframes)
-      @inbounds copy!(buffer, engine.root.buffer)
+      for ι=1:config.outchannels, frame=1:Δframes
+        τ = (engine.frame + frame)*Δτ
+        @inbounds buffer[frame, ι] = engine.dsp(τ, ι)
+      end
       if engine.empty
-        empty!(engine.root)
+        engine.dsp = silence
         empty!(engine.eventlist)
         engine.empty = false
       end
-      Δτ = time() - τ₀
-      δτ = engine.frame/sr - Δτ - 1e-3
+      δτ = τ₀ + engine.frame*Δτ - time() - 1e-3
       δτ > 1e-3 && sleep(δτ)
       serialize(stream, buffer)
       flush(stream)
@@ -63,15 +62,3 @@ function Base.empty!(engine::Engine)
     engine.empty = true
   end
 end
-
-function fire_audio_event(engine::Engine, event::Event)
-  afunc = fire_event(event)
-  if afunc # FIXME nullable
-    push!(engine.root.audio, afunc)
-  end
-end
-
-wrap_audio_event(engine::Engine, event::Event) = wrap_event(fire_audio_event, [engine], event)
-
-audio_events(engine::Engine, events) = map((event) -> wrap_audio_event(engine, event), events)
-audio_events(engine::Engine, events...) = map((event) -> wrap_audio_event(engine, event), events)

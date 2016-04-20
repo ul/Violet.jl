@@ -9,7 +9,7 @@ end
 
 Node(config=CONFIG) =
   Node(Set{AudioSignal}(), Set{Function}(), Set{Function}(), :ok, config,
-  zeros(Float64, (10config.buffer_size, config.output_channels)))
+  zeros(Float64, (config.buffer_size, config.output_channels)))
 
 # currently will continue rendering even if afs are empty. need to have
 # option to return nil when afs are empty, for the scenario of disk render.
@@ -56,7 +56,7 @@ Base.isempty(node::Node) = isempty(node.audio) && isempty(node.precontrol) && is
 function fire_node_event(node::Node, event::Event)
   f = fire_event(event)
   # FIXME use nullable
-  if f != nothing
+  if isa(f, Function)
     push!(node.audio, f)
   end
 end

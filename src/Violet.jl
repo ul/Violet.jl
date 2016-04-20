@@ -7,17 +7,11 @@ include("utils.jl")
 
 include("config.jl")
 
-include("PortAudio.jl")
-using Violet.PortAudio
-
-Violet.PortAudio.initialize()
-atexit(Violet.PortAudio.terminate)
-
 #include("ui.jl")
 
 include("event.jl")
 include("node.jl")
-include("audio.jl")
+#include("audio.jl")
 include("engine.jl")
 include("oscillators.jl")
 include("envelopes.jl")

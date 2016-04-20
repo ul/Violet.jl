@@ -1,7 +1,6 @@
 using Violet
 
 engine = Engine()
-run(engine)
 
 function addgen(engine, gen)
   push!(engine.root.audio, gen)
@@ -30,14 +29,22 @@ simple_synth(ν) =
 f = 0.5sine(440.0) + 0.3sine(440.0/sqrt(2)) + 0.2sine(880.0)
 f = 0.2*saw(220.0)
 
+amps = AudioControl[0.2, 0.1, 0.4, 0.1, 0.2]
+ff(freq, ph) = snapshot(overtones(sine, amps, freq, ph))
+f = overtones(sine, amps, ff(110.0, sine(13.0)), 0.0)
+
+f = overtones(sine, AudioControl[0.3, 0.5, 0.2], sine(110.0)+1.0, 0.0)
+
 push!(engine.root.audio, f)
+
+run(engine)
 
 #evt = Event(() -> push!(engine.root.audio, f), 5.0, [])
 #push!(engine.eventlist, evt)
 
 #engine.eventlist.current_beat
 
-sleep(10)
+sleep(60)
 delete!(engine.root.audio, f)
 kill(engine)
 sleep(2) # give time for async print to finish it's job

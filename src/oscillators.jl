@@ -118,6 +118,16 @@ end
 
 tri(ν) = tri(ν, 0.0)
 
+@audiosignal function square(fν::AudioSignal, fθ::AudioSignal, τ::Time, ι::AudioChannel)
+  ν = fν(τ, ι)::Sample
+  θ = fθ(τ, ι)::Sample
+  x = muladd(ν, τ, θ)
+  2.0floor(x) - floor(2.0x) + 1.0
+end
+
+square(ν) = square(ν, 0.0)
+
+
 function overtones(f::Function, amps::Vector{AudioControl}, ν::AudioControl, θ::AudioControl)
   fν = convert(AudioSignal, ν)
   fθ = convert(AudioSignal, θ)

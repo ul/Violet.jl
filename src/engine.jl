@@ -24,14 +24,16 @@ function Base.run(engine::Engine)
     return
   end
   engine.status = :running
-  stream = audiostream(engine.config)
-  buffer = Array{Float32}(10engine.config.buffer_size, engine.config.output_channels)
-  δframes = 0
+  stream = convert(IO, connect(31337))
+  buffer = Array{Float32}(engine.config.buffer_size, engine.config.output_channels)
+  Δframes = engine.config.buffer_size
+  sr = engine.config.sample_rate
+  δτ = 0.0
+  τ₀ = time()
   @async while true
     if engine.status == :running
-      tic()
-      Δframes = min(3engine.config.buffer_size, writeavailable(stream) + δframes)
-      engine.eventlist(engine.frame + Δframes)
+      endframe = engine.frame + Δframes
+      engine.eventlist(endframe)
       engine.root(engine.frame, Δframes)
       @inbounds copy!(buffer, engine.root.buffer)
       if engine.empty
@@ -39,12 +41,14 @@ function Base.run(engine::Engine)
         empty!(engine.eventlist)
         engine.empty = false
       end
-      write(stream, buffer, Δframes)
-      engine.frame += Δframes
-      sleep(0)
-      δframes = round(Int, toq()*engine.config.sample_rate)
+      Δτ = time() - τ₀
+      δτ = engine.frame/sr - Δτ - 1e-3
+      δτ > 1e-3 && sleep(δτ)
+      serialize(stream, buffer)
+      flush(stream)
+      engine.frame = endframe
     else
-      kill(stream)
+      close(stream)
       break
     end
   end

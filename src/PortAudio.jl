@@ -125,8 +125,8 @@ function Base.open(ID::PaDeviceIndex,
   else
     stream = Pa_OpenDefaultStream(num_IO[1], num_IO[2], sample_format, sample_rate, buf_size)
   end
-  play_buffer = CircularBuffer(sample_type, 10sample_rate)
-  tmp_buffer = zeros(sample_type, 10sample_rate)
+  play_buffer = CircularBuffer(sample_type, sample_rate)
+  tmp_buffer = zeros(sample_type, 3*buf_size*num_IO[2])
   stream_wrapper = PaStreamWrapper(stream, ID, sample_rate, sample_format,
                                    sample_type, buf_size, num_IO[1], num_IO[2],
                                    play_buffer, tmp_buffer)
@@ -195,37 +195,29 @@ end
 writeavailable(stream_wrapper::PaStreamWrapper) =
   Pa_GetStreamWriteAvailable(stream_wrapper.stream)
 
-"Write a buffer to a PortAudio stream"
 function Base.write(stream_wrapper::PaStreamWrapper, buffer::PaBuffer, Nframes::Integer=size(buffer,1))
   (stream_wrapper.num_outputs > size(buffer,2) || Nframes > size(buffer,1)) &&
     error("Buffer dimensions do not fit stream parameters")
-
-  stream = stream_wrapper.stream
-  #play = stream_wrapper.play_buffer
-  tmp = stream_wrapper.tmp_buffer
-  channels = stream_wrapper.num_outputs
-
-  #n = min(Pa_GetStreamWriteAvailable(stream), Nframes)
-  n = Nframes
-
-  interleave(buffer, tmp, channels, n)
-  Pa_WriteStream(stream, tmp, n)
-
-  return n
-
-  #=towrite = Pa_GetStreamWriteAvailable(stream)
-  while play.pushed > play.pulled
-    towrite = Pa_GetStreamWriteAvailable(stream)
-    if towrite > 0
-      n = min(towrite*channels, play.pushed - play.pulled)
-      unsafe_copy!(tmp, play, n)
-      Pa_WriteStream(stream, tmp, towrite)
-    else
-      sleep(0)
-    end
-  end=#
+  interleave(buffer, stream_wrapper.play_buffer, stream_wrapper.num_outputs, Nframes)
+  return
 end
 
+function Base.flush(stream_wrapper::PaStreamWrapper)
+  stream = stream_wrapper.stream
+  play = stream_wrapper.play_buffer
+  tmp = stream_wrapper.tmp_buffer
+  channels = stream_wrapper.num_outputs
+  towrite = Pa_GetStreamWriteAvailable(stream)
+  towrite <= 0 && return
+  n = channels*towrite
+  if play.pulled + n <= play.pushed
+    unsafe_copy!(tmp, play, n)
+  else
+    fill!(tmp, 0.0)
+  end
+  Pa_WriteStream(stream, tmp, towrite)
+  return
+end
 ############ Low-level wrappers for Portaudio function calls ############
 
 Pa_GetDeviceInfo(i) = unsafe_load(ccall((:Pa_GetDeviceInfo, libportaudio),

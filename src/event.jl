@@ -40,7 +40,7 @@ Base.empty!(eventlist::EventList) = empty!(eventlist.events)
 Base.isempty(eventlist::EventList) = isempty(eventlist.events)
 Base.delete!(eventlist::EventList, event::Event) = delete!(eventlist.events, event)
 
-@guarded function fire_event(event::Event)
+@guarded function Base.call(event::Event)
   event.f(event.args...)
 end
 
@@ -58,15 +58,12 @@ events(f, args...) = map((xs) -> Event(f, xs...), args)
 
 "Merges pending-events with the PriorityQueue of known events. Adjusts start times of events to *tempo*."
 function merge_pending!(eventlist::EventList)
-  while !isempty(eventlist.pending_events)
-    # FIXME make atomic
-    new_events = copy(eventlist.pending_events)
-    empty!(eventlist.pending_events)
-    for e in new_events
-      e = alter_event_time(eventlist.beat + e.start, e)
-      eventlist.events[e] = e.start
-    end
+  events = eventlist.pending_events
+  for e in events
+    e = alter_event_time(eventlist.beat + e.start, e)
+    eventlist.events[e] = e.start
   end
+  empty!(events)
 end
 
 seconds_to_beats(seconds, tempo) = seconds * tempo / 60
@@ -75,8 +72,9 @@ beats_to_seconds(beats, tempo) = beats * 60 / tempo
 function Base.call(eventlist::EventList, endframe::Int)
   merge_pending!(eventlist)
   beat = seconds_to_beats(endframe/eventlist.config.samplerate, eventlist.config.tempo)
-  while length(eventlist.events) > 0 && peek(eventlist.events)[2] < beat
-    fire_event(dequeue!(eventlist.events))
+  events = eventlist.events
+  while length(events) > 0 && peek(events)[2] < beat
+    dequeue!(events)()
   end
   eventlist.beat = beat
   !isempty(eventlist)

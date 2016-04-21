@@ -13,7 +13,7 @@ function Engine(config=CONFIG)
     :stopped,
     false,
     silence,
-    EventList(config),
+    EventList(config.tempo),
     0)
 end
 
@@ -26,12 +26,12 @@ function Base.run(engine::Engine)
   stream = convert(IO, connect(config.port))
   buffer = Array{Float32}(config.buffersize, config.outchannels)
   Δframes = config.buffersize
-  Δτ = 1/config.samplerate
+  Δτ = 1.0/config.samplerate
   τ₀ = time()
   @async while true
     if engine.status == :running
       endframe = engine.frame + Δframes
-      engine.eventlist(endframe)
+      engine.eventlist(endframe*Δτ)
       for ι=1:config.outchannels, frame=1:Δframes
         τ = (engine.frame + frame)*Δτ
         @inbounds buffer[frame, ι] = engine.dsp(τ, ι)

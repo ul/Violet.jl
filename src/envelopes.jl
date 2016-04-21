@@ -1,3 +1,6 @@
+"ADSR envelope
+FIXME: enable `f` reuse (reset τ₀)
+FIXME: enable arbitrary interpolation"
 function adsr(attack::Time, decay::Time, sustain::Time, release::Time, sustain_amp::Amplitude)
   assert(0.0 <= sustain_amp <= 1.0)
   τ₀ = -1.0

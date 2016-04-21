@@ -28,7 +28,7 @@ end
 
 EventList(tempo::Tempo) = EventList(Event[], tempo)
 
-function EventList(events::Vector{Events}=Event[], tempo::Tempo=60.0)
+function EventList(events::Vector{Event}=Event[], tempo::Tempo=60.0)
   pq = EventQueue()
   for e in events
     pq[e] = e.start

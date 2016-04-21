@@ -1,4 +1,5 @@
 include("PortAudio.jl")
+include("types.jl")
 include("config.jl")
 
 using PortAudio

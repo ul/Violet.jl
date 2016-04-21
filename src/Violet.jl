@@ -14,7 +14,6 @@ include("event.jl")
 include("oscillators.jl")
 include("engine.jl")
 include("envelopes.jl")
-include("swapper.jl")
 
 include("exports.jl")
 

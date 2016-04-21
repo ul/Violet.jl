@@ -3,7 +3,7 @@ immutable Config
   buffersize::Int
   inchannels::Int
   outchannels::Int
-  tempo::Float64
+  tempo::Tempo
   port::Int
 end
 

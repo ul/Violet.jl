@@ -2,7 +2,7 @@ using Base.Collections
 
 immutable Event
   f::Function
-  start::Time
+  start::Beat
   args::Vector
 end
 
@@ -14,7 +14,7 @@ EventQueue() = PriorityQueue(Event, Time)
 type EventList
   events::EventQueue
   pending_events::Vector{Event}
-  beat::Time
+  beat::Beat
   config::Config
 end
 
@@ -66,8 +66,8 @@ function merge_pending!(eventlist::EventList)
   empty!(events)
 end
 
-seconds_to_beats(seconds, tempo) = seconds * tempo / 60
-beats_to_seconds(beats, tempo) = beats * 60 / tempo
+seconds_to_beats(seconds::Time, tempo::Tempo) = seconds * tempo / 60
+beats_to_seconds(beats::Beat, tempo::Tempo) = beats * 60 / tempo
 
 function Base.call(eventlist::EventList, endframe::Int)
   merge_pending!(eventlist)

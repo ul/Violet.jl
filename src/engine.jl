@@ -3,7 +3,7 @@ type Engine
   status::Symbol
   empty::Bool
   dsp::AudioSignal
-  eventlist::EventList
+  events::EventQueue
   frame::Int
 end
 
@@ -13,7 +13,7 @@ function Engine(config=CONFIG)
     :stopped,
     false,
     silence,
-    EventList(config.tempo),
+    EventQueue(),
     0)
 end
 
@@ -26,22 +26,22 @@ function Base.run(engine::Engine)
   stream = convert(IO, connect(config.port))
   buffer = Array{Float32}(config.buffersize, config.outchannels)
   Δframes = config.buffersize
-  Δτ = 1.0/config.samplerate
+  sr = config.samplerate
   τ₀ = time()
   @async while true
     if engine.status == :running
       endframe = engine.frame + Δframes
-      engine.eventlist(endframe*Δτ)
+      engine.events(endframe/sr)
       for ι=1:config.outchannels, frame=1:Δframes
-        τ = (engine.frame + frame)*Δτ
+        τ = (engine.frame + frame)/sr
         @inbounds buffer[frame, ι] = engine.dsp(τ, ι)
       end
       if engine.empty
         engine.dsp = silence
-        empty!(engine.eventlist)
+        empty!(engine.events)
         engine.empty = false
       end
-      δτ = τ₀ + engine.frame*Δτ - time() - 1e-3
+      δτ = τ₀ + now(engine) - time() - 1e-3
       δτ > 1e-3 && sleep(δτ)
       serialize(stream, buffer)
       flush(stream)
@@ -62,3 +62,11 @@ function Base.empty!(engine::Engine)
     engine.empty = true
   end
 end
+
+Base.now(engine::Engine) = engine.frame/engine.config.samplerate
+
+schedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
+  schedule(engine.events, start, f, args)
+
+relschedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
+  schedule(engine, now(engine) + start, f, args)

@@ -1,5 +1,4 @@
 include("PortAudio.jl")
-include("types.jl")
 include("config.jl")
 
 using PortAudio
@@ -7,7 +6,7 @@ using PortAudio
 function audiostream(config=CONFIG)
   devID = convert(PaDeviceIndex, -1)
   audiostream = open(devID, (config.inchannels, config.outchannels),
-    config.samplerate, config.buffersize)
+    config.samplerate, 1024)
   run(audiostream)
   audiostream
 end

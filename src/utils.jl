@@ -1,3 +1,6 @@
+seconds_to_beats(seconds::Time, tempo::Tempo) = seconds*tempo/60.0
+beats_to_seconds(beats::Beat, tempo::Tempo) = 60.0beats/tempo
+
 macro guarded(ex...)
   retval = nothing
   if length(ex) == 2

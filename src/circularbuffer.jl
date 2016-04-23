@@ -5,7 +5,9 @@ type CircularBuffer{T}
   read::Int
 end
 
-CircularBuffer(T, n) = CircularBuffer(zeros(T, n), n, 1, 1)
+CircularBuffer(A::Vector) = CircularBuffer(A, length(A), 1, 1)
+CircularBuffer(T::Type, n::Int) = CircularBuffer(zeros(T, n))
+CircularBuffer(f::Function, n::Int) = CircularBuffer(map(f, 1:n))
 
 @inbounds function Base.getindex(cb::CircularBuffer, i)
   cb.buffer[mod1(i, cb.size)]

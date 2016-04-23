@@ -1,5 +1,7 @@
 seconds_to_beats(seconds::Time, tempo::Tempo) = seconds*tempo/60.0
 beats_to_seconds(beats::Beat, tempo::Tempo) = 60.0beats/tempo
+freq_to_pitch(f::Frequency) = 69.0 + 12.0log2(f/440.0)
+pitch_to_freq(m::Pitch) = 440.0exp2((m - 69.0)/12.0)
 
 macro guarded(ex...)
   retval = nothing

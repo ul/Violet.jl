@@ -2,7 +2,7 @@ type Engine
   config::Config
   status::Symbol
   empty::Bool
-  dsp::AudioSignal
+  dsp #::AudioSignal
   events::EventQueue
   frame::Int
 end
@@ -27,6 +27,8 @@ function Base.run(engine::Engine)
   buffer = Array{Float32}(config.buffersize, config.outchannels)
   Δframes = config.buffersize
   sr = config.samplerate
+  engine.frame = 0
+  empty!(engine.events)
   τ₀ = time()
   @async while true
     if engine.status == :running
@@ -65,8 +67,8 @@ end
 
 Base.now(engine::Engine) = engine.frame/engine.config.samplerate
 
-schedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
+schedule₀(engine::Engine, start::Time, f::Function, args::Vector=[]) =
   schedule(engine.events, start, f, args)
 
-relschedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
-  schedule(engine, now(engine) + start, f, args)
+Base.schedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
+  schedule₀(engine, now(engine) + start, f, args)

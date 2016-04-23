@@ -17,6 +17,12 @@ typealias EventQueue PriorityQueue{Event, Time}
 
 EventQueue() = PriorityQueue(Event, Time)
 
+function Base.empty!(q::EventQueue)
+  while length(q) > 0
+    dequeue!(q)
+  end
+end
+
 function Base.call(q::EventQueue, endtime::Time)
   while length(q) > 0 && peek(q)[2] < endtime
     dequeue!(q)()
@@ -24,5 +30,5 @@ function Base.call(q::EventQueue, endtime::Time)
   !isempty(q)
 end
 
-schedule(q::EventQueue, start::Time, f::Function, args::Vector=[]) =
+Base.schedule(q::EventQueue, start::Time, f::Function, args::Vector=[]) =
   q[Event(f, args)] = start

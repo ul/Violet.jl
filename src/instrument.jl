@@ -9,12 +9,11 @@ type Instrument
   dsp::Function
   function Instrument(osc::Function, a::Time, d::Time, s::Amplitude, r::Time, poly::Int=8)
     @assert poly > 0
-    k = 1.0/poly
     control = ntuple(poly) do _
       ([Inf, Inf], [0.0, 0.0], [0.0, 0.0])
     end
-    dsp = mapreduce(+, 1:poly) do i
-      k*adsr(control[i][1], control[i][2], a, d, s, r)*osc(control[i][3])
+    dsp = 1.0/poly*mapreduce(+, 1:poly) do i
+      adsr(control[i][1], control[i][2], a, d, s, r)*osc(control[i][3])
     end
     new(a, d, s, r, poly, 1, control, dsp)
   end

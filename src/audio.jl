@@ -22,6 +22,7 @@ function clean()
 end
 
 atexit(clean)
+run(`sudo renice -19 $(getpid())`)
 
 @async while true
   flush(stream)

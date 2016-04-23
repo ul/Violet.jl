@@ -1,29 +1,29 @@
-"ADSR envelope
-FIXME: enable arbitrary interpolation"
-function adsr(start::AudioControl, duration::AudioControl,
-              attack::Time, decay::Time, sustain::Amplitude, release::Time)
-  @assert 0.0 <= sustain <= 1.0
-  τ₀ = convert(AudioSignal, start)
-  dur = convert(AudioSignal, duration)
-  complement_sustain = 1.0 - sustain
-  function f(τ::Time, ι::AudioChannel)
-    Δτ = τ - τ₀(τ, ι)
-    Δτ < 0.0 && return 0.0
+# ADSR envelope
+# FIXME: enable arbitrary interpolation
+@audiosignal function adsr(
+  τ₀::AudioSignal, duration::AudioSignal,
+  attack::AudioSignal, decay::AudioSignal, sustain::AudioSignal, release::AudioSignal,
+  τ::Time, ι::AudioChannel)
 
-    attack > 0.0 && Δτ <= attack && return Δτ/attack
-    Δτ -= attack
+  Δτ = τ - τ₀(τ, ι)
+  Δτ < 0.0 && return 0.0
 
-    decay > 0.0 && Δτ <= decay && return 1.0 - complement_sustain*Δτ/decay
-    Δτ -= decay
+  a = attack(τ, ι)
+  a > 0.0 && Δτ <= a && return Δτ/a
+  Δτ -= a
 
-    s = dur(τ, ι)
-    Δτ <= s && return sustain
-    Δτ -= s
+  amp = sustain(τ, ι)
 
-    release > 0.0 && Δτ <= release && return (1.0 - Δτ/release)sustain
+  d = decay(τ, ι)
+  d > 0.0 && Δτ <= d && return 1.0 - (1.0 - amp)Δτ/d
+  Δτ -= d
 
-    0.0
-  end
-  precompile(f, (Time, AudioChannel))
-  f
+  s = duration(τ, ι)
+  Δτ <= s && return amp
+  Δτ -= s
+
+  r = release(τ, ι)
+  r > 0.0 && Δτ <= r && return (1.0 - Δτ/r)amp
+
+  0.0
 end

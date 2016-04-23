@@ -12,7 +12,7 @@ run(engine)
 
 f(freq) = 0.75sine(freq) + 0.25saw(freq)
 
-inst = Instrument(f, 0.1, 0.15, 0.66, 0.2, 6)
+inst = Instrument(f, 0.1, 0.15, 0.66, 0.2, 4)
 engine.dsp = inst.dsp
 
 function play1(n, x)

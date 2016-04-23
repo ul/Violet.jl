@@ -10,7 +10,9 @@ run(`sudo renice -19 $(getpid())`)
 engine = Engine()
 run(engine)
 
-inst = Instrument(sine, 0.1, 0.15, 0.66, 0.2)
+f(freq) = 0.75sine(freq) + 0.25saw(freq)
+
+inst = Instrument(f, 0.1, 0.15, 0.66, 0.2, 6)
 engine.dsp = inst.dsp
 
 function play1(n, x)

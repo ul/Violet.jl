@@ -2,7 +2,7 @@ using Base.Collections
 
 immutable Event
   f::Function
-  args::Vector
+  args::Tuple
 end
 
 Event(f) = Event(f, [])
@@ -30,5 +30,5 @@ function Base.call(q::EventQueue, endtime::Time)
   !isempty(q)
 end
 
-Base.schedule(q::EventQueue, start::Time, f::Function, args::Vector=[]) =
+Base.schedule(q::EventQueue, start::Time, f::Function, args...) =
   q[Event(f, args)] = start

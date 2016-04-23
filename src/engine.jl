@@ -67,8 +67,8 @@ end
 
 Base.now(engine::Engine) = engine.frame/engine.config.samplerate
 
-schedule₀(engine::Engine, start::Time, f::Function, args::Vector=[]) =
-  schedule(engine.events, start, f, args)
+schedule₀(engine::Engine, start::Time, f::Function, args...) =
+  schedule(engine.events, start, f, args...)
 
-Base.schedule(engine::Engine, start::Time, f::Function, args::Vector=[]) =
-  schedule₀(engine, now(engine) + start, f, args)
+Base.schedule(engine::Engine, start::Time, f::Function, args...) =
+  schedule₀(engine, now(engine) + start, f, args...)

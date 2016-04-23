@@ -19,14 +19,14 @@ type Instrument
   end
 end
 
-function next_slot(inst::Instrument)
+function nextslot(inst::Instrument)
   s = inst.start_dur_freq[inst.c]
   inst.c = mod1(inst.c + 1, inst.poly)
   s
 end
 
-function _playnote(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)
-  slot = next_slot(inst)
+function noteon(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)
+  slot = nextslot(inst)
   fill!(slot[1], time)
   fill!(slot[2], dur)
   fill!(slot[3], pitch_to_freq(pitch))
@@ -34,7 +34,7 @@ function _playnote(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, d
 end
 
 function playnote₀(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)
-  schedule₀(engine, time, _playnote, [engine, inst, time, pitch, dur])
+  schedule₀(engine, time, noteon, engine, inst, time, pitch, dur)
 end
 
 function playnote(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)

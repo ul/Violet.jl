@@ -25,7 +25,7 @@ function nextslot(inst::Instrument)
   s
 end
 
-function noteon(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)
+function noteon(inst::Instrument, time::Time, pitch::Pitch, dur::Time)
   slot = nextslot(inst)
   fill!(slot[1], time)
   fill!(slot[2], dur)
@@ -34,7 +34,7 @@ function noteon(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur:
 end
 
 function playnote₀(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)
-  schedule₀(engine, time, noteon, engine, inst, time, pitch, dur)
+  schedule₀(engine, time, noteon, inst, time, pitch, dur)
 end
 
 function playnote(engine::Engine, inst::Instrument, time::Time, pitch::Pitch, dur::Time)

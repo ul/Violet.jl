@@ -11,28 +11,37 @@ function audiostream(config=CONFIG)
   audiostream
 end
 
-PortAudio.initialize()
-server = listen(CONFIG.port)
-stream = audiostream()
-
-function clean()
+function unstream(stream)
   kill(stream)
   close(stream)
+end
+
+PortAudio.initialize()
+server = listen(CONFIG.port)
+
+function clean()
   PortAudio.terminate()
 end
 
 atexit(clean)
 run(`sudo renice -19 $(getpid())`)
 
-@async while true
-  flush(stream)
-  sleep(0)
+function fork(sock)
+  stream = audiostream()
+  ok = true
+  @async while ok
+    flush(stream)
+    sleep(0)
+  end
+  while isopen(sock)
+    write(stream, deserialize(sock))
+    sleep(0)
+  end
+  ok = false
+  unstream(stream)
 end
 
 while true
   sock = convert(IO, accept(server))
-  @async while isopen(sock)
-    write(stream, deserialize(sock))
-    sleep(0)
-  end
+  @async fork(sock)
 end
